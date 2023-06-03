@@ -1,0 +1,80 @@
+---
+title: "Rainfall_Predict"
+author: "Sofia Trogu"
+date: "2023-06-02"
+output: pdf_document
+---
+
+```{r}
+library(corrplot)
+library(ggplot2)
+library(caret)
+```
+
+## Download the Rain Dataset
+```{r}
+file_path <- "/Users/Sofia/Desktop/Rain_Australia/weatherAUS.csv"
+rain <- read.csv(file_path)
+print(rain)
+summary(rain)
+```
+
+## Data Preprocessing
+
+```{r}
+# Find Empty Columns
+empty_columns <- which(colSums(is.na(rain)) == nrow(rain))
+names_of_empty_col<- names(rain)[empty_columns]
+names_of_empty_col
+
+dim(rain)
+
+# Omit rows with NAs. We are left with 56,420 rows and 23 columns
+rain <- na.omit(rain)
+print(rain)
+
+rain$RainToday <- ifelse(rain$RainToday == "Yes", 1,
+                                     ifelse(rain$RainToday == "No", 0, rain$RainToday))
+
+#RainTomorrow is our Target variable                         
+rain$RainTomorrow <- ifelse(rain$RainTomorrow == "Yes", 1,
+                                     ifelse(rain$RainTomorrow == "No", 0, rain$RainToday))  
+
+#Remove date and location columns and hot encode wind directions
+rain <- rain[, !(names(rain) %in% c('Date', 'Location', 'WindGustDir', 'WindDir9am', 'WindDir3pm'))]
+
+# 56,420 × 18
+print(rain)
+
+rain <- as.data.frame(lapply(rain, as.numeric))
+print(summary(rain))
+                                    
+```
+## Correlation and Feature Selection
+```{r}
+# Build a Correlation Matrix
+cor_matrix <- cor(rain)
+
+# Create a heatmap from the correlation matrix with blue, white, and green color scheme
+heatmap(cor_matrix, col = colorRampPalette(c("blue", "white", "green"))(100))
+
+# Add a color legend
+legend_colors <- c("blue", "white", "green")
+legend("right", legend = c(-1, 0, 1), fill = legend_colors, title = "Correlation")
+
+# Add a main title
+title(main = "Correlation Heatmap")
+
+corrplot(cor(rain[,-19]),
+         method = "number",
+         diag = TRUE,
+         tl.cex = 0.4,
+         number.cex = 0.5,
+         tl.col = "black")
+```
+## Density Plots
+## Feature Scaling and Balancing
+## Feature Selection (Backward and Forward using BIC)
+## Splitting Data into Train and Test
+## Models
+## Plots and Analysis
