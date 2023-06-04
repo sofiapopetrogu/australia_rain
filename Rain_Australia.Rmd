@@ -5,23 +5,25 @@ date: "2023-06-02"
 output: pdf_document
 ---
 
-```{r}
+```{r import}
 library(corrplot)
 library(ggplot2)
 library(caret)
+library(magrittr)
+library(gridExtra)  
 ```
 
 ## Download the Rain Dataset
-```{r}
+```{r data loading}
 file_path <- "/Users/Sofia/Desktop/Rain_Australia/weatherAUS.csv"
 rain <- read.csv(file_path)
-print(rain)
+head(rain)
 summary(rain)
 ```
 
 ## Data Preprocessing
 
-```{r}
+```{r data preprocessing}
 # Find Empty Columns
 empty_columns <- which(colSums(is.na(rain)) == nrow(rain))
 names_of_empty_col<- names(rain)[empty_columns]
@@ -44,14 +46,13 @@ rain$RainTomorrow <- ifelse(rain$RainTomorrow == "Yes", 1,
 rain <- rain[, !(names(rain) %in% c('Date', 'Location', 'WindGustDir', 'WindDir9am', 'WindDir3pm'))]
 
 # 56,420 × 18
-print(rain)
+head(rain)
 
 rain <- as.data.frame(lapply(rain, as.numeric))
 print(summary(rain))
-                                    
 ```
-## Correlation and Feature Selection
-```{r}
+## Correlation 
+```{r correlation}
 # Build a Correlation Matrix
 cor_matrix <- cor(rain)
 
@@ -65,16 +66,77 @@ legend("right", legend = c(-1, 0, 1), fill = legend_colors, title = "Correlation
 # Add a main title
 title(main = "Correlation Heatmap")
 
-corrplot(cor(rain[,-19]),
-         method = "number",
-         diag = TRUE,
-         tl.cex = 0.4,
-         number.cex = 0.5,
-         tl.col = "black")
+corrplot <- corrplot(cor(rain[,-19]),
+             method = "number",
+             diag = TRUE,
+             tl.cex = 0.4,
+             number.cex = 0.5,
+             tl.col = "black")
 ```
 ## Density Plots
+
+```{r density}
+## Find features with highest correlation with target variable (RainTomorrow)
+
+correlations <- cor_matrix['RainTomorrow',]
+highly_correlated_columns <- correlations[abs(correlations) > 0.3 & correlations != 1] 
+column_names <- names(highly_correlated_columns)
+print(column_names)
+
+rain_subset <- rain[,c(column_names)]
+
+# We are trying to visualize relationship between Target Variable, RainTomorrow with the features having the highest correlation
+
+
+plot_list <- list()
+
+for (col in column_names) {
+  if (col == "RainToday") {
+    bar_plot <- rain%>%ggplot() +
+  geom_bar(aes(x = .data[[col]], fill = col), position = "dodge") +
+  geom_bar(aes(x = .data[["RainTomorrow"]], fill = "RainTomorrow", position = "dodge") +
+  labs(x = "Feature", y = "Count") +
+  scale_fill_manual(values = c("red", "blue"), labels = c("Rain Today", "Rain Tomorrow")) +
+  theme(panel.grid.major.x = element_blank(), panel.grid.minor.x = element_blank())
+  plot_list <- append(plot_list, list(bar_plot))
+  }
+  else {
+    density_plot <- rain%>% ggplot(aes(x = .data[[col]] , fill = factor(RainTomorrow))) +
+    geom_density(alpha = 0.5) +
+    labs(x = col, y = "Density", fill = "RainTomorrow") +
+    ggtitle(paste("Density Plot of ", col, "by Raintomorrow")) +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5, size =10))
+  plot_list <- append(plot_list, list(density_plot))
+  }
+  
+}
+
+grid.arrange(grobs = plot_list, nrow = 3, ncol = 2)
+
+grid_size <- matrix(c(1, 1, 1, 1, 1, 1), nrow = 2, ncol = 3)
+grid.arrange(grobs = plot_list, widths = c(1, 1, 1), heights = c(1, 1), layout_matrix = grid_size, scale = c(1.5, 1.5, 1.5, 1.5, 1.5, 1.5))
+#grid.arrange(grobs = plot_list, nrow = 3, ncol = 2)
+
+# Sunshine: fraction of total days having higher sunshine record more 0 RainTomorrow, lower sunshine, more 1 RainTomorrow
+# Humidity3pm: overlap more but still higher humidity associated with 1 RainTomorrow and vice versa
+#Cloud9am/Cloud3pm: oscillates a bit across x-axis with higher discrepancies between RainTomorrow values at the two extremes.  
+#RainToday: Since RainToday is a binary variable, the density plots are concentrated around 0 and 1. When RainToday =0, there is a bigger discrepancy between 0 and 1 for RainTomorrow. 
+
+```
 ## Feature Scaling and Balancing
+
+```{r feature scaling}
+```
 ## Feature Selection (Backward and Forward using BIC)
+```{r feature selection}
+```
 ## Splitting Data into Train and Test
+```{r split data}
+```
 ## Models
+```{r models}
+```
 ## Plots and Analysis
+```{r plots/analysis}
+```
