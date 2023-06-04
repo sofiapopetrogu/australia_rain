@@ -11,6 +11,12 @@ library(ggplot2)
 library(caret)
 library(magrittr)
 library(gridExtra)  
+library(scales)
+library(DMwR)
+library(UBL)
+library(caret)
+library(MASS)
+library(ipred)
 ```
 
 ## Download the Rain Dataset
@@ -87,18 +93,30 @@ rain_subset <- rain[,c(column_names)]
 
 # We are trying to visualize relationship between Target Variable, RainTomorrow with the features having the highest correlation
 
+# Calculate the count of each feature
+count_rain_today <- sum(rain$RainToday == 1)
+count_no_rain_today <- sum(rain$RainToday == 0)
+count_rain_tomorrow <- sum(rain$RainTomorrow == 1)
+count_no_rain_tomorrow <- sum(rain$RainTomorrow == 0)
+
+# Create a data frame with the counts
+count_df <- data.frame(
+  Feature = c("RainToday", "RainTomorrow", "RainToday","RainTomorrow"),
+  Value = c("1", "1", "0", "0"),
+  Count = c(count_rain_today, count_rain_tomorrow, count_no_rain_today, count_no_rain_tomorrow)
+)
 
 plot_list <- list()
 
 for (col in column_names) {
   if (col == "RainToday") {
-    bar_plot <- rain%>%ggplot() +
-  geom_bar(aes(x = .data[[col]], fill = col), position = "dodge") +
-  geom_bar(aes(x = .data[["RainTomorrow"]], fill = "RainTomorrow", position = "dodge") +
-  labs(x = "Feature", y = "Count") +
-  scale_fill_manual(values = c("red", "blue"), labels = c("Rain Today", "Rain Tomorrow")) +
-  theme(panel.grid.major.x = element_blank(), panel.grid.minor.x = element_blank())
-  plot_list <- append(plot_list, list(bar_plot))
+    # Plot the barplot
+    bar_plot <- ggplot(count_df, aes(x = Value, y = Count, fill = Feature)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    labs(x = "Feature", y = "Count", fill = "") +
+    scale_fill_manual(values = c("red", "blue"), labels = c("RainToday", "RainTomorrow")) +
+    theme_minimal()
+    plot_list <- append(plot_list, list(bar_plot))
   }
   else {
     density_plot <- rain%>% ggplot(aes(x = .data[[col]] , fill = factor(RainTomorrow))) +
@@ -111,12 +129,8 @@ for (col in column_names) {
   }
   
 }
-
+print(plot_list)
 grid.arrange(grobs = plot_list, nrow = 3, ncol = 2)
-
-grid_size <- matrix(c(1, 1, 1, 1, 1, 1), nrow = 2, ncol = 3)
-grid.arrange(grobs = plot_list, widths = c(1, 1, 1), heights = c(1, 1), layout_matrix = grid_size, scale = c(1.5, 1.5, 1.5, 1.5, 1.5, 1.5))
-#grid.arrange(grobs = plot_list, nrow = 3, ncol = 2)
 
 # Sunshine: fraction of total days having higher sunshine record more 0 RainTomorrow, lower sunshine, more 1 RainTomorrow
 # Humidity3pm: overlap more but still higher humidity associated with 1 RainTomorrow and vice versa
@@ -126,13 +140,45 @@ grid.arrange(grobs = plot_list, widths = c(1, 1, 1), heights = c(1, 1), layout_m
 ```
 ## Feature Scaling and Balancing
 
-```{r feature scaling}
+```{r balancing and feature scaling}
+
+# Check distribution of RainTomorrow values to see how balanced the data is
+# 0: 43993; 1: 12427 
+table(rain$RainTomorrow)
+
+# Handling balancing of data below in train/test split
+
+# Feature Scaling
+
 ```
 ## Feature Selection (Backward and Forward using BIC)
 ```{r feature selection}
+
+# Perform logistic regression with forward stepwise selection
+logit_model <- glm(Salary ~ 1, data = Hitters, family = binomial)  # Start with a null model
+
+# Perform forward stepwise selection using AIC
+logit_model <- stepAIC(logit_model, direction = "forward", scope = formula(Hitters[, -1]), trace = FALSE)
+
+# Print the summary of the logistic regression model
+summary(logit_model)
 ```
 ## Splitting Data into Train and Test
 ```{r split data}
+# Percentage of each class in RainTomorrow
+prop.table(table(rain$RainTomorrow))
+
+balancedRAIN <- SmoteClassif(rain$RainTomorrow ~ ., rain[], C.perc = "balance", dist="HEOM")
+table(rain$RainTomorrow)
+table(balancedRAIN$RainTomorrow)
+
+
+#newData <- SMOTE(as.factor(rain$RainTomorrow) ~ ., rain, perc.over = 100,perc.under=300)
+
+#Downsamples majority class(0) 
+under <- downSample(x = rain[, -1], y = factor(rain[["RainTomorrow"]]))
+table(under$RainTomorrow)
+
 ```
 ## Models
 ```{r models}
