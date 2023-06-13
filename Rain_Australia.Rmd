@@ -17,6 +17,7 @@ library(UBL)
 library(caret)
 library(MASS)
 library(ipred)
+library(rsample)
 ```
 
 ## Download the Rain Dataset
@@ -138,9 +139,9 @@ grid.arrange(grobs = plot_list, nrow = 3, ncol = 2)
 #RainToday: Since RainToday is a binary variable, the density plots are concentrated around 0 and 1. When RainToday =0, there is a bigger discrepancy between 0 and 1 for RainTomorrow. 
 
 ```
-## Feature Scaling and Balancing
+## Feature Scaling
 
-```{r balancing and feature scaling}
+```{r feature scaling}
 
 # Check distribution of RainTomorrow values to see how balanced the data is
 # 0: 43993; 1: 12427 
@@ -149,39 +150,73 @@ table(rain$RainTomorrow)
 # Handling balancing of data below in train/test split
 
 # Feature Scaling
+min_max_norm <- function(x) {(x - min(x)) / (max(x) - min(x))}
+
+rain_n <- as.data.frame(lapply(rain[,1:16], min_max_norm))
+
+#Add back in Binary Feature, RainToday and target variable
+rain_n$RainToday <- rain$RainToday
+rain_n$RainTomorrow <- rain$RainTomorrow
+
+```
+
+## Balancing
+```{r balancing}
+#Downsamples majority class(0) 
+#Added yname to specify the target variable in downSample function, ow it assumes first col is target
+rain_balanced <- downSample(x = rain_n[, -which(names(rain_n) == "RainTomorrow")], 
+                            y = factor(rain_n$RainTomorrow), 
+                            yname = "RainTomorrow")
+table(rain_balanced$RainTomorrow)
+head(rain_balanced)
+
+#Check if there are any NAs
+sum(is.na(rain_balanced$RainTomorrow))
 
 ```
 ## Feature Selection (Backward and Forward using BIC)
 ```{r feature selection}
 
 # Perform logistic regression with forward stepwise selection
-logit_model <- glm(Salary ~ 1, data = Hitters, family = binomial)  # Start with a null model
+logit_model <- glm(rain_balanced$RainTomorrow ~ ., data = rain_balanced, family = binomial)  
 
-# Perform forward stepwise selection using AIC
-logit_model <- stepAIC(logit_model, direction = "forward", scope = formula(Hitters[, -1]), trace = FALSE)
+# Perform forward stepwise selection using AIC with log(n)
+logit_model <- stepAIC(logit_model, direction = "backward", k = log(nrow(rain_balanced)), trace = FALSE)
 
 # Print the summary of the logistic regression model
 summary(logit_model)
+
+# Subset the dataframe with the chosen features based on stepwise selection
+rain_subset <- rain_balanced[, c("MinTemp", "Sunshine", "WindGustSpeed", "WindSpeed9am", "WindSpeed3pm", "Humidity3pm", "Pressure9am", "Pressure3pm", "Cloud9am", "Cloud3pm", "Temp3pm", "RainToday", "RainTomorrow")]
+                            
 ```
-## Splitting Data into Train and Test
-```{r split data}
-# Percentage of each class in RainTomorrow
-prop.table(table(rain$RainTomorrow))
+#Train/Test Split
+```{r train/test split}
 
-balancedRAIN <- SmoteClassif(rain$RainTomorrow ~ ., rain[], C.perc = "balance", dist="HEOM")
-table(rain$RainTomorrow)
-table(balancedRAIN$RainTomorrow)
+set.seed(123)
 
+# split <- initial_split(rain_subset, prob = 0.75)
+# train <- training(split)
+# test <- testing(split)
 
-#newData <- SMOTE(as.factor(rain$RainTomorrow) ~ ., rain, perc.over = 100,perc.under=300)
+train <- sample(1:nrow(rain_subset), nrow(rain_subset) * 0.75)
 
-#Downsamples majority class(0) 
-under <- downSample(x = rain[, -1], y = factor(rain[["RainTomorrow"]]))
-table(under$RainTomorrow)
+# Calculate the test indices
+test <- setdiff(1:nrow(rain_subset), train_2)
 
+# Split the target variable into train and test sets
+rain_subset_train <- rain_subset[train,]
+rain_subset_test <- rain_subset[test,]
+
+head(rain_subset_train)
+head(rain_subset_test)
 ```
-## Models
-```{r models}
+## Selected Model
+```{r selected model}
+model <- glm(balancedRAIN$RainTomorrow ~ MinTemp + Rainfall + 
+              Sunshine + WindGustSpeed + WindSpeed9am + WindSpeed3pm + 
+              Humidity3pm + Pressure9am + Pressure3pm + Cloud3pm + Temp9am + 
+              RainToday, family = binomial, data = balancedRAIN)
 ```
 ## Plots and Analysis
 ```{r plots/analysis}
