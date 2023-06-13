@@ -213,10 +213,71 @@ head(rain_subset_test)
 ```
 ## Selected Model
 ```{r selected model}
-model <- glm(balancedRAIN$RainTomorrow ~ MinTemp + Rainfall + 
-              Sunshine + WindGustSpeed + WindSpeed9am + WindSpeed3pm + 
-              Humidity3pm + Pressure9am + Pressure3pm + Cloud3pm + Temp9am + 
-              RainToday, family = binomial, data = balancedRAIN)
+# Model Definition
+glm_model <- glm(data = rain_subset_train, 
+        rain_subset_train$RainTomorrow ~ ., 
+        family = binomial)
+
+#R squared and Variance Inflation Factor (VIF)
+#If the VIF value for a predictor variable is greater than 1, it indicates the presence of multicollinearity, suggesting that the predictor variable is highly correlated with other predictor variables in the model. 
+model_summary <- summary(glm_model)
+summary(glm_model)
+r2 <- 1 - (model_summary$deviance/model_summary$null.deviance) # 0.3838685
+vif <- 1/(1-r2) # 1.62303
+
+#Predict test with model
+glm_predict <- predict(glm_model, rain_subset_test, type = "response")
+
+#Convert predictions into 0,1 based on different thresholds
+
+threshold4 <- 0.4
+threshold5 <- 0.5
+threshold6 <- 0.6
+
+glm_predict_4<- ifelse(glm_predict > threshold4, 1, 0)
+glm_predict_5<- ifelse(glm_predict > threshold5, 1, 0)
+glm_predict_6<- ifelse(glm_predict > threshold6, 1, 0)
+
+create_confusion_matrix <- function(confusion_matrix) {
+  # Extract the confusion matrix table
+  cm_table <- as.data.frame(confusion_matrix$table)
+  
+  # Plot the confusion matrix using ggplot2
+  ggplot(data = cm_table, aes(x = Reference, y = Prediction, fill = Freq)) +
+    geom_tile(color = "white") +
+    geom_text(aes(label = Freq), color = "black", size = 8) +
+    scale_fill_gradient(low = "white", high = "steelblue") +
+    labs(title = "Confusion Matrix", x = "Target", y = "Prediction") +
+    theme_minimal() +
+    theme(axis.text = element_text(size = 8),
+          plot.title = element_text(size = 8, face = "bold"))
+
+}
+
+# Confusion matrix with threshold = 0.4
+table(rain_subset_test$RainTomorrow, glm_predict_4)
+mean(glm_predict_4!=rain_subset_test$RainTomorrow)
+cm4 <- confusionMatrix(data = factor(glm_predict_4), reference = factor(rain_subset_test$RainTomorrow))
+
+# Confusion matrix with threshold = 0.5
+table(rain_subset_test$RainTomorrow, glm_predict_5)
+mean(glm_predict_5!=rain_subset_test$RainTomorrow)
+cm5 <- confusionMatrix(data = factor(glm_predict_5), reference = factor(rain_subset_test$RainTomorrow))
+
+# Confusion matrix with threshold = 0.6
+table(rain_subset_test$RainTomorrow, glm_predict_6)
+mean(glm_predict_6!=rain_subset_test$RainTomorrow)
+cm6 <- confusionMatrix(data = factor(glm_predict_6), reference = factor(rain_subset_test$RainTomorrow))
+
+a <- create_confusion_matrix(cm4)
+b <- create_confusion_matrix(cm5)
+c <- create_confusion_matrix(cm6)
+
+# Threshold of 0.05 is the best among thresholds in terms of accuracy, sensitivity, and specificity
+cm_all = list(a, b, c)
+plot_width <- c(4, 4, 4) 
+grid.arrange(grobs = cm_all, nrow = 3, width = plot_width)
+
 ```
 ## Plots and Analysis
 ```{r plots/analysis}
