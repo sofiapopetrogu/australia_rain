@@ -20,6 +20,7 @@ library(ipred)
 library(rsample)
 library(mlr)
 library(knitr)
+library(glmnet)
 ```
 
 ## Download the Rain Dataset
@@ -423,6 +424,124 @@ for (model in models) {
 f1_scores
 
 ```
-## Plots and Analysis
-```{r plots/analysis}
+## LASSO and Ridge Regression
+```{r ridge regression and lasso}
+
+## Ridge Regression
+
+# Fitted Model
+glm_ridge <- glm(data = rain_balanced, 
+                        rain_balanced$RainTomorrow ~ ., 
+                        family = binomial)
+
+# compute ell_1 and ell_2 norm for ls estimates
+beta_hat_ls <- coefficients(glm_ridge)[-1]
+
+ell_1_ls <- sum(abs(beta_hat_ls))
+ell_1_ls
+
+ell_2_ls <- sqrt(sum(beta_hat_ls^2))
+ell_2_ls
+
+# grid of lambda values
+
+grid <- 10^seq(10, -2, length=100)
+plot(grid, type="l")
+
+plot(log10(grid), type="l")
+summary(log10(grid))
+
+plot(log(grid), type="l")
+summary(log(grid))
+
+# Apply glmnet() function
+
+# design matrix 
+#
+X <- model.matrix(RainTomorrow~., data=rain_balanced)
+
+# remove the first column relative to the intercept 
+#
+X <- X[,-1]
+
+# vector of responses
+
+y <- rain_balanced$RainTomorrow
+
+# alpha=0 for ridge, alpha=1 (default) for lasso
+#
+# ridge is applied to standardized variables, 
+# use standardize=FALSE to turn off this setting
+#
+# if lambda is not given glmnet() chooses its own sequence
+
+ridge_mod <- glmnet(X, y, alpha=0, lambda=grid, thresh = 1e-12, family = "binomial")
+
+# plot method for glmnet
+#  xvar = c("norm", "lambda", "dev")
+
+# add labels to identify the variables
+# Plots include lines that represent each coefficients. The closer value of variable
+# is to 0, the more the shrinkage has been applied.
+# Log lamda represents the L2 norm
+plot(ridge_mod, xvar="lambda", label=TRUE)
+
+plot(ridge_mod, xvar="norm", label=TRUE)
+plot(ridge_mod, xvar="dev", label=TRUE)
+
+# coef() gives a matrix of coefficients
+
+dim(coef(ridge_mod))
+
+# coefficients for lambda[50]
+
+ridge_mod$lambda[50]
+coef(ridge_mod)[,50]
+
+# ell_2 norm and amount of shrinkage 
+sqrt(sum(coef(ridge_mod)[-1,50]^2))
+sqrt(sum(coef(ridge_mod)[-1,50]^2))/ell_2_ls
+
+plot(ridge_mod, xvar="lambda", label=TRUE)
+abline(v=log(ridge_mod$lambda[50]), lty=3, lwd=2)
+
+# coefficients for lambda[60]
+
+ridge_mod$lambda[70]
+coef(ridge_mod)[,70]
+
+# # ell_2 norm and amount of shrinkage 
+sqrt(sum(coef(ridge_mod)[-1,70]^2))
+sqrt(sum(coef(ridge_mod)[-1,70]^2))/ell_2_ls
+abline(v=log(ridge_mod$lambda[70]), lty=3, lwd=2, col="red")
+
+# coefficients for any lambda with interpolation
+# s=lambda (interpolates over the grid of lambda used in fitting)
+
+ridge_mod$lambda[50]
+ridge_mod$lambda[49]
+coef(ridge_mod, s=15000)
+
+
+# use the predict function for a number of purposes
+# s=lambda (interpolates over the grid of lambda used in fitting)
+# type="coefficients" returns the beta-values
+# type="response" returns the y.hat values
+
+predict(ridge_mod, s=15000, type="coefficients")
+
+y_hat <- predict(ridge_mod, s=15000, newx=X, type="response")
+
+## Test Ridge Regression on Train/Test Split
+set.seed(123)
+
+X_train <- model.matrix(RainTomorrow~., data=rain_balanced_train)
+X_test <- model.matrix(RainTomorrow~., data=rain_balanced_test)
+X_train <- X_train[,-1]
+X_test <- X_test[,-1]
+
+y_train <- rain_balanced_train$RainTomorrow
+y_test <- rain_balanced_test$RainTomorrow
+
+
 ```
