@@ -12,7 +12,7 @@ library(caret)
 library(magrittr)
 library(gridExtra)  
 library(scales)
-library(DMwR)
+library(DMwR2)
 library(UBL)
 library(caret)
 library(MASS)
@@ -25,7 +25,7 @@ library(glmnet)
 
 ## Download the Rain Dataset
 ```{r data loading}
-file_path <- "/Users/Sofia/Desktop/Rain_Australia/weatherAUS.csv"
+file_path <- "/Users/LENOVO/Desktop/stat project/australia_rain/weatherAUS.csv"
 rain <- read.csv(file_path)
 head(rain)
 summary(rain)
@@ -417,131 +417,86 @@ for (model in models) {
     f1_score <- cm$byClass["F1"]
     
     # Add the F1 score to the data frame
-    f1_scores <- rbind(f1_scores, data.frame(Model = model, Threshold = threshold_value, F1_Score = f1_score, stringsAsFactors = FALSE))
+    f1_scores <- rbind(f1_scores, data.frame(Model = model, Threshold = threshold_value, F1_Score = f1_score, stringsAsFactors = FALSE,row.names = NULL))
   }
 }
 
+
 f1_scores
+
+```
+##Predictions 
+```{r prediction comparison for the 3 regression models}
+
+# original classification :
+
+ggplot(rain_n_test0 , aes(x = Rainfall,
+y = Cloud9am,
+color= as.factor(RainTomorrow) )) +
+geom_point()+
+labs(x = "Sunshine",
+y = "Max Temperature",
+color = "Rain Tomorrow") +
+theme(legend.position = c(0.8, 0.8))
+
+
+
+
 
 ```
 ## LASSO and Ridge Regression
 ```{r ridge regression and lasso}
 
-## Ridge Regression
-
-# Fitted Model
-glm_ridge <- glm(data = rain_balanced, 
-                        rain_balanced$RainTomorrow ~ ., 
-                        family = binomial)
-
-# compute ell_1 and ell_2 norm for ls estimates
-beta_hat_ls <- coefficients(glm_ridge)[-1]
-
-ell_1_ls <- sum(abs(beta_hat_ls))
-ell_1_ls
-
-ell_2_ls <- sqrt(sum(beta_hat_ls^2))
-ell_2_ls
-
-# grid of lambda values
-
-grid <- 10^seq(10, -2, length=100)
-plot(grid, type="l")
-
-plot(log10(grid), type="l")
-summary(log10(grid))
-
-plot(log(grid), type="l")
-summary(log(grid))
-
-# Apply glmnet() function
-
-# design matrix 
-#
-X <- model.matrix(RainTomorrow~., data=rain_balanced)
-
-# remove the first column relative to the intercept 
-#
-X <- X[,-1]
-
-# vector of responses
-
-y <- rain_balanced$RainTomorrow
-
-# alpha=0 for ridge, alpha=1 (default) for lasso
-#
-# ridge is applied to standardized variables, 
-# use standardize=FALSE to turn off this setting
-#
-# if lambda is not given glmnet() chooses its own sequence
-
-ridge_mod <- glmnet(X, y, alpha=0, lambda=grid, thresh = 1e-12, family = "binomial")
-
-# plot method for glmnet
-#  xvar = c("norm", "lambda", "dev")
-
-# add labels to identify the variables
-# Plots include lines that represent each coefficients. The closer value of variable
-# is to 0, the more the shrinkage has been applied.
-# Log lamda represents the L2 norm
-plot(ridge_mod, xvar="lambda", label=TRUE)
-
-plot(ridge_mod, xvar="norm", label=TRUE)
-plot(ridge_mod, xvar="dev", label=TRUE)
-
-# coef() gives a matrix of coefficients
-
-dim(coef(ridge_mod))
-
-# coefficients for lambda[50]
-
-ridge_mod$lambda[50]
-coef(ridge_mod)[,50]
-
-# ell_2 norm and amount of shrinkage 
-sqrt(sum(coef(ridge_mod)[-1,50]^2))
-sqrt(sum(coef(ridge_mod)[-1,50]^2))/ell_2_ls
-
-plot(ridge_mod, xvar="lambda", label=TRUE)
-abline(v=log(ridge_mod$lambda[50]), lty=3, lwd=2)
-
-# coefficients for lambda[60]
-
-ridge_mod$lambda[70]
-coef(ridge_mod)[,70]
-
-# # ell_2 norm and amount of shrinkage 
-sqrt(sum(coef(ridge_mod)[-1,70]^2))
-sqrt(sum(coef(ridge_mod)[-1,70]^2))/ell_2_ls
-abline(v=log(ridge_mod$lambda[70]), lty=3, lwd=2, col="red")
-
-# coefficients for any lambda with interpolation
-# s=lambda (interpolates over the grid of lambda used in fitting)
-
-ridge_mod$lambda[50]
-ridge_mod$lambda[49]
-coef(ridge_mod, s=15000)
-
-
-# use the predict function for a number of purposes
-# s=lambda (interpolates over the grid of lambda used in fitting)
-# type="coefficients" returns the beta-values
-# type="response" returns the y.hat values
-
-predict(ridge_mod, s=15000, type="coefficients")
-
-y_hat <- predict(ridge_mod, s=15000, newx=X, type="response")
-
-## Test Ridge Regression on Train/Test Split
 set.seed(123)
+
+X <- model.matrix(RainTomorrow~., data=rain_balanced)
+X <- X[,-1]
 
 X_train <- model.matrix(RainTomorrow~., data=rain_balanced_train)
 X_test <- model.matrix(RainTomorrow~., data=rain_balanced_test)
 X_train <- X_train[,-1]
 X_test <- X_test[,-1]
 
+# Target vector
+y <- rain_balanced$RainTomorrow
 y_train <- rain_balanced_train$RainTomorrow
 y_test <- rain_balanced_test$RainTomorrow
+
+
+
+# alpha=0 for ridge, alpha=1 (default) for lasso
+
+
+# Ridge Regression (L2)
+
+ridge_cv <- cv.glmnet(X_train, y_train, alpha=0, family = "binomial", type.measure = "class")
+plot(ridge_cv)
+
+# to select best lambda 
+lambda_opt_ridge <- ridge_cv$lambda.min
+lambda_opt_ridge
+
+pred_ridge<- predict(ridge_cv, X_test, type = "class", s = lambda_opt_ridge)
+table(y_test, pred_ridge)
+
+
+
+
+
+#Lasso Regression (L1)
+lasso_cv <- cv.glmnet(X_train, y_train, alpha=1, family = "binomial", type.measure = "class")
+plot(lasso_cv)
+
+lambda_opt_lasso <- lasso_cv$lambda.min
+lambda_opt_lasso
+
+pred_lasso<- predict(lasso_cv, X_test, type = "class", s = lambda_opt_lasso)
+table(y_test, pred_lasso)
+
+
+```
+##TO DO: LAD, QDA, and KNN
+```{r TODO}
 
 
 ```
