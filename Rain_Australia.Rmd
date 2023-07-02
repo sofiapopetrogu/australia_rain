@@ -21,6 +21,7 @@ library(rsample)
 library(mlr)
 library(knitr)
 library(glmnet)
+library(outliers)
 ```
 
 ## Download the Rain Dataset
@@ -448,6 +449,8 @@ theme(legend.position = c(0.8, 0.8))
 ```{r ridge regression and lasso}
 
 set.seed(123)
+#we're implementing lasso/ridge with balanced data with no selection ie. rain_balanced_train
+#TODO implement on dataset after feature selection ie. use rain_subset_train
 
 X <- model.matrix(RainTomorrow~., data=rain_balanced)
 X <- X[,-1]
@@ -495,8 +498,179 @@ table(y_test, pred_lasso)
 
 
 ```
-##TO DO: LAD, QDA, and KNN
-```{r TODO}
+##Remove outliers from data 
+```{r Remove outliers}
+#looking for outliers in our data after balancing and feature selection 
+
+g1<- ggplot(data = rain_subset_train, aes(y = MinTemp,fill = 2)) +
+geom_boxplot(outlier.colour = "red", outlier.shape = 16,
+outlier.size = 2)+
+theme(legend.position="none") +
+ylab("Min Temperature")
+#print(g1)
+chisq.out.test(rain_subset_train$MinTemp)  #p-value = 0.00151, remove 376
+which(rain_subset_train$MinTemp == 0) 
+
+
+g2<- ggplot(data = rain_subset_train, aes(y = Sunshine,fill = 2)) +
+geom_boxplot(outlier.colour = "red", outlier.shape = 16,
+outlier.size = 2)+
+theme(legend.position="none") +
+ylab("Sunshine")
+#print(g2)
+chisq.out.test(rain_subset_train$Sunshine)  #p-value = 0.04431, index 6965 
+which(rain_subset_train$Sunshine == 1) 
+
+
+g3<- ggplot(data = rain_subset_train, aes(y = WindGustSpeed,fill = 2)) +
+geom_boxplot(outlier.colour = "red", outlier.shape = 16,
+outlier.size = 2)+
+theme(legend.position="none") +
+ylab("WindGustSpeed")
+#print(g3)
+chisq.out.test(rain_subset_train$WindGustSpeed) #p-value = 3.071e-07, no values 
+which(rain_subset_train$WindGustSpeed == 0.939130434782609) 
+
+
+
+
+g4<- ggplot(data = rain_subset_train, aes(y = WindSpeed9am,fill = 2)) +
+geom_boxplot(outlier.colour = "red", outlier.shape = 16,
+outlier.size = 2)+
+theme(legend.position="none") +
+ylab("WindSpeed9am")
+#print(g4)
+chisq.out.test(rain_subset_train$WindSpeed9am)  #p-value = 1.43e-08 , no values
+which(rain_subset_train$WindSpeed9am == 0.969230769230769) 
+
+
+
+g5<- ggplot(data = rain_subset_train, aes(y = WindSpeed3pm,fill = 2)) +
+geom_boxplot(outlier.colour = "red", outlier.shape = 16,
+outlier.size = 2)+
+theme(legend.position="none") +
+ylab("WindSpeed3pm")
+#print(g5)
+chisq.out.test(rain_subset_train$WindSpeed3pm)  #p-value = 4.733e-07 , no values
+which(rain_subset_train$WindSpeed3pm == 0.851351351351351) 
+
+
+
+g6<- ggplot(data = rain_subset_train, aes(y = Humidity3pm,fill = 2)) +
+geom_boxplot(outlier.colour = "red", outlier.shape = 16,
+outlier.size = 2)+
+theme(legend.position="none") +
+ylab("Humidity3pm")
+#print(g6)
+chisq.out.test(rain_subset_train$Humidity3pm) #p-value = 0.009785, indices:3782 10189 10959 15362 16105 18240
+which(rain_subset_train$Humidity3pm ==0.01)
+
+
+
+g7<- ggplot(data = rain_subset_train, aes(y = Pressure9am,fill = 2)) +
+geom_boxplot(outlier.colour = "red", outlier.shape = 16,
+outlier.size = 2)+
+theme(legend.position="none") +
+ylab("Pressure9am")
+#print(g7)
+chisq.out.test(rain_subset_train$Pressure9am) # p-value = 2.435e-06, index= 1935
+which(rain_subset_train$Pressure9am ==0.0283806343906518)
+
+
+
+g8<- ggplot(data = rain_subset_train, aes(y = Pressure3pm,fill = 2)) +
+geom_boxplot(outlier.colour = "red", outlier.shape = 16,
+outlier.size = 2)+
+theme(legend.position="none") +
+ylab("Pressure3pm")
+#print(g8)
+chisq.out.test(rain_subset_train$Pressure3pm)  # p-value = 2.756e-07, index=15369
+which(rain_subset_train$Pressure3pm ==0)
+
+
+
+g9<- ggplot(data = rain_subset_train, aes(y = Cloud9am,fill = 2)) +
+geom_boxplot(outlier.colour = "red", outlier.shape = 16,
+outlier.size = 2)+
+theme(legend.position="none") +
+ylab("Cloud9am")
+#print(g9)
+chisq.out.test(rain_subset_train$Cloud9am)
+which(rain_subset_train$Cloud9am ==0) # we got a p-value of 0.07 so we cannot refute the null hypothesis 
+
+
+
+g10<- ggplot(data = rain_subset_train, aes(y = Cloud3pm,fill = 2)) +
+geom_boxplot(outlier.colour = "red", outlier.shape = 16,
+outlier.size = 2)+
+theme(legend.position="none") +
+ylab("Cloud3pm")
+#print(g10)
+chisq.out.test(rain_subset_train$Cloud3pm) #p-value = 0.04988 
+which(rain_subset_train$Cloud3pm ==0)
+
+
+
+g11<- ggplot(data = rain_subset_train, aes(y = Temp3pm,fill = 2)) +
+geom_boxplot(outlier.colour = "red", outlier.shape = 16,
+outlier.size = 2)+
+theme(legend.position="none") +
+ylab("Temp3pm")
+#print(g11)
+chisq.out.test(rain_subset_train$Temp3pm)#p-value = 0.0003997, indices= 4596, 10679
+which(rain_subset_train$Temp3pm ==1)
+
+
+grid.arrange(g1, g2, g3,g4,g5,g6,g7,g8,g9,g10,g11,  nrow = 3)
+
+#remove outliers for p_values less that 0.05
+rain_subset_train_NoOutliers <- rain_subset_train[-c(4596,10679,15369,1935,3782,10189,10959,15362,16105,18240,376,6965)]
+
+
+
+```
+##LDA
+```{r LDA}
+# Model definition starting from the previous glm_bal model:
+
+lda<- lda(data = rain_subset_train_NoOutliers,RainTomorrow ~.,family = "binomial")
+lda
+
+pred_lda<- predict(lda, rain_subset_test, type = "response")
+
+
+post_lda<- pred_lda$posterior
+ 
+pred_lda_04<- as.factor(ifelse(post_lda[,2] > threshold4, 1, 0))
+pred_lda_05<- as.factor(ifelse(post_lda[,2] > threshold5, 1, 0))
+pred_lda_06<- as.factor(ifelse(post_lda[,2] > threshold6, 1, 0))
+
+
+# Confusion matrix with threshold = 0.4
+table(rain_subset_test$RainTomorrow, pred_lda_04)
+mean(pred_lda_04!=rain_subset_test$RainTomorrow)
+lda_CM04 <- confusionMatrix(data = factor(pred_lda_04), reference = factor(rain_subset_test$RainTomorrow), mode ='everything')
+
+# Confusion matrix with threshold = 0.5
+table(rain_subset_test$RainTomorrow, pred_lda_05)
+mean(pred_lda_05!=rain_subset_test$RainTomorrow)
+lda_CM05 <- confusionMatrix(data = factor(pred_lda_05), reference = factor(rain_subset_test$RainTomorrow), mode ='everything')
+
+# Confusion matrix with threshold = 0.6
+table(rain_subset_test$RainTomorrow, pred_lda_06)
+mean(pred_lda_06!=rain_subset_test$RainTomorrow)
+lda_CM06 <- confusionMatrix(data = factor(pred_lda_06), reference = factor(rain_subset_test$RainTomorrow), mode ='everything')
+
+
+
+A <- create_confusion_matrix(lda_CM04)
+B <- create_confusion_matrix(lda_CM05)
+C <- create_confusion_matrix(lda_CM06)
+
+# Threshold of 0.05 is the best among thresholds in terms of accuracy, sensitivity, and specificity
+CM_all_lda = list(A,B,C)
+plot_width <- c(4, 4, 4) 
+grid.arrange(grobs = CM_all_lda, nrow = 3, width = plot_width)
 
 
 ```
