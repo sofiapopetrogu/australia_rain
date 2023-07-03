@@ -825,3 +825,8 @@ ggplot(data.frame(knn_test_error),
                     format((knn_test_error[k_min])*100, digits = 4), 
                     "%)"))
 ```
+
+```{r Model Summaries}
+
+#TODO: model comparisons, write analysis, and clean up code
+```
