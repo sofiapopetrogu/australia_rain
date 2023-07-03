@@ -310,7 +310,7 @@ a_balanced <- create_confusion_matrix(cm4_balanced)
 b_balanced <- create_confusion_matrix(cm5_balanced)
 c_balanced <- create_confusion_matrix(cm6_balanced)
 
-# Threshold of 0.05 is the best among thresholds in terms of accuracy, sensitivity, and specificity
+# Threshold of 0.5 is the best among thresholds in terms of accuracy, sensitivity, and specificity
 cm_all_balanced = list(a_balanced, b_balanced, c_balanced)
 plot_width <- c(4, 4, 4) 
 grid.arrange(grobs = cm_all_balanced, nrow = 3, width = plot_width)
@@ -428,21 +428,52 @@ f1_scores
 
 ```
 ##Predictions 
-```{r prediction comparison for the 3 regression models}
+```{r Visualizing data classifications}
 
-# original classification :
-
-ggplot(rain_n_test0 , aes(x = Rainfall,
-y = Cloud9am,
+# original classification 
+a0 <- ggplot(data = rain_n_test0 , aes(x = Sunshine,
+y = Temp3pm,
 color= as.factor(RainTomorrow) )) +
 geom_point()+
 labs(x = "Sunshine",
-y = "Max Temperature",
+y = "Temp3pm",
 color = "Rain Tomorrow") +
 theme(legend.position = c(0.8, 0.8))
 
+# Simple GLM: Threshold of 0.5
+a2 <- ggplot(data = rain_n_test0 , aes(x = Sunshine,
+y = Temp3pm,
+color= as.factor(glm_predict_5_0) )) +
+geom_point()+
+labs(x = "Sunshine",
+y = "Temp3pm",
+color = "Rain Tomorrow",
+title = "Simple GLM: 0.5") +
+theme(legend.position = c(0.8, 0.8))
 
+# GLM with Balancing: Threshold of 0.5
+b2 <- ggplot(data = rain_balanced_test , aes(x = Sunshine,
+y = Temp3pm,
+color= as.factor(glm_predict_5_balanced) )) +
+geom_point()+
+labs(x = "Sunshine",
+y = "Temp3pm",
+color = "Rain Tomorrow",
+title = "GLM with Balancing: 0.5") +
+theme(legend.position = c(0.8, 0.8))
 
+# GLM with Balancing and Feature Selection
+c2 <- ggplot(data = rain_balanced_test , aes(x = Sunshine,
+y = Temp3pm,
+color= as.factor(glm_predict_5) )) +
+geom_point()+
+labs(x = "Sunshine",
+y = "Temp3pm",
+color = "Rain Tomorrow",
+title = "GLM with Balancing and Feature Selection: 0.5") +
+theme(legend.position = c(0.8, 0.8))
+
+grid.arrange(a0, a2, b2, c2, nrow = 2)
 
 
 ```
@@ -463,7 +494,6 @@ y_test_subset <- rain_subset_test$RainTomorrow
 
 set.seed(123)
 #we're implementing lasso/ridge with balanced data with no selection ie. rain_balanced_train
-#TODO implement on dataset after feature selection ie. use rain_subset_train
 
 X <- model.matrix(RainTomorrow~., data=rain_balanced)
 X <- X[,-1]
@@ -497,8 +527,6 @@ table(y_test, pred_ridge)
 
 
 
-
-
 #Lasso Regression (L1)
 lasso_cv <- cv.glmnet(X_train, y_train, alpha=1, family = "binomial", type.measure = "class")
 plot(lasso_cv)
@@ -509,6 +537,30 @@ lambda_opt_lasso
 pred_lasso<- predict(lasso_cv, X_test, type = "class", s = lambda_opt_lasso)
 table(y_test, pred_lasso)
 
+
+#Implement Ridge and LASSO after feature selection
+
+# Ridge Regression (L2)
+
+ridge_cv_subset <- cv.glmnet(X_train_subset, y_train_subset, alpha=0, family = "binomial", type.measure = "class")
+plot(ridge_cv_subset)
+
+# to select best lambda 
+lambda_opt_ridge_subset <- ridge_cv_subset$lambda.min
+lambda_opt_ridge_subset
+
+pred_ridge_subset<- predict(ridge_cv_subset, X_test_subset, type = "class", s = lambda_opt_ridge_subset)
+table(y_test_subset, pred_ridge_subset)
+
+#Lasso Regression (L1)
+lasso_cv_subset <- cv.glmnet(X_train_subset, y_train_subset, alpha=1, family = "binomial", type.measure = "class")
+plot(lasso_cv_subset)
+
+lambda_opt_lasso_subset <- lasso_cv_subset$lambda.min
+lambda_opt_lasso_subset
+
+pred_lasso_subset<- predict(lasso_cv_subset, X_test_subset, type = "class", s = lambda_opt_lasso_subset)
+table(y_test_subset, pred_lasso_subset)
 
 ```
 ##Remove outliers from data 
@@ -757,10 +809,15 @@ tab<- table(y_test_subset, knn)
 tab
 ```
 
-```{plot error}
-ggplot(data.frame(knn_test_error), aes(x = 1:kmax, y = knn_test_error)) +
-      geom_line(colour="green") +
-      geom_point(colour="green") +
+```{r plot error}
+
+accuracy <-function(x){sum(diag(x)/(sum(rowSums(x)))) * 100}
+accuracy(tab)
+
+ggplot(data.frame(knn_test_error), 
+      aes(x = 1:kmax, y = knn_test_error)) +
+      geom_line(colour="blue") +
+      geom_point(colour="red") +
       xlab("K (#neighbors)") + 
       ylab("Test error") +
       ggtitle(paste0("Best value of K = ", k_min,
