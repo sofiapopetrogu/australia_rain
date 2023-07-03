@@ -22,11 +22,12 @@ library(mlr)
 library(knitr)
 library(glmnet)
 library(outliers)
+library(class)
 ```
 
 ## Download the Rain Dataset
 ```{r data loading}
-file_path <- "/Users/LENOVO/Desktop/stat project/australia_rain/weatherAUS.csv"
+file_path <- "/Users/Sofia/Desktop/Rain_Australia/weatherAUS.csv"
 rain <- read.csv(file_path)
 head(rain)
 summary(rain)
@@ -445,6 +446,18 @@ theme(legend.position = c(0.8, 0.8))
 
 
 ```
+```{r X and y for Subset}
+
+X_train_subset <- model.matrix(RainTomorrow~., data=rain_subset_train)
+X_test_subset <- model.matrix(RainTomorrow~., data=rain_subset_test)
+X_train_subset <- X_train_subset[,-1]
+X_test_subset <- X_test_subset[,-1]
+
+# Target vector
+y_train_subset <- rain_subset_train$RainTomorrow
+y_test_subset <- rain_subset_test$RainTomorrow
+```
+
 ## LASSO and Ridge Regression
 ```{r ridge regression and lasso}
 
@@ -638,7 +651,6 @@ lda
 
 pred_lda<- predict(lda, rain_subset_test, type = "response")
 
-
 post_lda<- pred_lda$posterior
  
 pred_lda_04<- as.factor(ifelse(post_lda[,2] > threshold4, 1, 0))
@@ -671,6 +683,88 @@ C <- create_confusion_matrix(lda_CM06)
 CM_all_lda = list(A,B,C)
 plot_width <- c(4, 4, 4) 
 grid.arrange(grobs = CM_all_lda, nrow = 3, width = plot_width)
+```
+
+```{r QDA}
+qda<- qda(data = rain_subset_train_NoOutliers,RainTomorrow ~.,family = "binomial")
+qda
+
+pred_qda<- predict(qda, rain_subset_test, type = "response")
+
+post_qda<- pred_qda$posterior
+ 
+pred_qda_04<- as.factor(ifelse(post_qda[,2] > threshold4, 1, 0))
+pred_qda_05<- as.factor(ifelse(post_qda[,2] > threshold5, 1, 0))
+pred_qda_06<- as.factor(ifelse(post_qda[,2] > threshold6, 1, 0))
 
 
+# Confusion matrix with threshold = 0.4
+table(rain_subset_test$RainTomorrow, pred_qda_04)
+mean(pred_qda_04!=rain_subset_test$RainTomorrow)
+qda_CM04 <- confusionMatrix(data = factor(pred_qda_04), reference = factor(rain_subset_test$RainTomorrow), mode ='everything')
+
+# Confusion matrix with threshold = 0.5
+table(rain_subset_test$RainTomorrow, pred_qda_05)
+mean(pred_qda_05!=rain_subset_test$RainTomorrow)
+qda_CM05 <- confusionMatrix(data = factor(pred_qda_05), reference = factor(rain_subset_test$RainTomorrow), mode ='everything')
+
+# Confusion matrix with threshold = 0.6
+table(rain_subset_test$RainTomorrow, pred_qda_06)
+mean(pred_qda_06!=rain_subset_test$RainTomorrow)
+qda_CM06 <- confusionMatrix(data = factor(pred_qda_06), reference = factor(rain_subset_test$RainTomorrow), mode ='everything')
+
+A <- create_confusion_matrix(qda_CM04)
+B <- create_confusion_matrix(qda_CM05)
+C <- create_confusion_matrix(qda_CM06)
+
+# Threshold of 0.05 is the best among thresholds in terms of accuracy, sensitivity, and specificity
+CM_all_qda = list(A,B,C)
+plot_width <- c(4, 4, 4) 
+grid.arrange(grobs = CM_all_qda, nrow = 3, width = plot_width)
+
+```
+
+
+```{r KNN}
+
+set.seed(2531)
+
+# We look now for the best value of the parameter 
+kmax <- 100
+knn_test_error <- numeric(kmax)
+
+# For each possible value of k we consider the obtained accuracy of the model
+for(k in 1:kmax) 
+  {
+  knn_pred <- as.factor(knn(X_train_subset,X_test_subset,cl = y_train_subset, k = k))
+  
+  cm <- confusionMatrix(data = knn_pred, reference = y_test_subset)
+
+  knn_test_error[k] <- 1 - cm$overall[1]
+  }
+
+# We took the minimum value of the error
+k_min <- which.min(knn_test_error)
+k_min
+
+# We compute now the prediction with the value of k that gives us the minimum error
+knn<- knn(X_train_subset, X_test_subset,cl = y_train_subset, k = k_min)
+
+knn_pred_min <- knn
+
+# Confusion matrix for KNN on the test set
+tab<- table(y_test_subset, knn)
+tab
+```
+
+```{plot error}
+ggplot(data.frame(knn_test_error), aes(x = 1:kmax, y = knn_test_error)) +
+      geom_line(colour="green") +
+      geom_point(colour="green") +
+      xlab("K (#neighbors)") + 
+      ylab("Test error") +
+      ggtitle(paste0("Best value of K = ", k_min,
+                     " (minimal error = ",
+                    format((knn_test_error[k_min])*100, digits = 4), 
+                    "%)"))
 ```
