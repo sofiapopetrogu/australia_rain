@@ -23,11 +23,12 @@ library(knitr)
 library(glmnet)
 library(outliers)
 library(class)
+library(correlation)
 ```
 
 ## Download the Rain Dataset
 ```{r data loading}
-file_path <- "/Users/Sofia/Desktop/Rain_Australia/weatherAUS.csv"
+file_path <- "/Users/Lenovo/Desktop/stat project/australia_rain/weatherAUS.csv"
 rain <- read.csv(file_path)
 head(rain)
 summary(rain)
@@ -85,6 +86,16 @@ corrplot <- corrplot(cor(rain[,-19]),
              number.cex = 0.5,
              tl.col = "black")
 ```
+##Partial correlations between the features
+```{r Partial correlations between the features}
+
+#correlation(rain, partial = TRUE)
+
+
+
+```
+
+
 ## Density Plots
 
 ```{r density}
@@ -429,6 +440,20 @@ f1_scores
 ```
 ##Predictions 
 ```{r Visualizing data classifications}
+
+#for different features: mintemp an temp3pm
+a00 <- ggplot(data = rain_n_test0 , aes(x = MinTemp,
+y = Temp3pm,
+color= as.factor(RainTomorrow) )) +
+geom_point()+
+labs(x = "Mintemp",
+y = "Temp3pm",
+color = "Rain Tomorrow") +
+theme(legend.position = c(0.8, 0.8))
+
+print(a00)
+#since the 2 features are highly correlated, we cannot see a clear separation of the classes in the scatter plot 
+
 
 # original classification 
 a0 <- ggplot(data = rain_n_test0 , aes(x = Sunshine,
@@ -825,8 +850,13 @@ ggplot(data.frame(knn_test_error),
                     format((knn_test_error[k_min])*100, digits = 4), 
                     "%)"))
 ```
-
-```{r Model Summaries}
-
 #TODO: model comparisons, write analysis, and clean up code
+
+## Visualization for LDA, QDA and KNN 
+```{r Visualization for LDA, QDA and KNN using scatter plots }
+
+
+
+
+
 ```
