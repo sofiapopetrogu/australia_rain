@@ -23,16 +23,17 @@ library(knitr)
 library(glmnet)
 library(outliers)
 library(class)
-library(correlation)
 ```
 
 ## Download the Rain Dataset
 ```{r data loading}
-file_path <- "/Users/Lenovo/Desktop/stat project/australia_rain/weatherAUS.csv"
+file_path <- "/Users/Sofia/Desktop/Rain_Australia/weatherAUS.csv"
 rain <- read.csv(file_path)
 head(rain)
 summary(rain)
 ```
+
+##TODO: Create Feature Table of Contents
 
 ## Data Preprocessing
 
@@ -85,14 +86,6 @@ corrplot <- corrplot(cor(rain[,-19]),
              tl.cex = 0.4,
              number.cex = 0.5,
              tl.col = "black")
-```
-##Partial correlations between the features
-```{r Partial correlations between the features}
-
-#correlation(rain, partial = TRUE)
-
-
-
 ```
 
 
@@ -211,7 +204,7 @@ glm_predict_4_0<- ifelse(glm_predict0 > threshold4, 1, 0)
 glm_predict_5_0<- ifelse(glm_predict0 > threshold5, 1, 0)
 glm_predict_6_0<- ifelse(glm_predict0 > threshold6, 1, 0)
 
-create_confusion_matrix <- function(confusion_matrix) {
+create_confusion_matrix <- function(confusion_matrix, threshold, error, accuracy) {
   # Extract the confusion matrix table
   cm_table <- as.data.frame(confusion_matrix$table)
   
@@ -223,7 +216,7 @@ create_confusion_matrix <- function(confusion_matrix) {
     geom_tile(color = "white") +
     geom_text(aes(label = Freq), color = "black", size = 8) +
     scale_fill_gradient(low = "white", high = "steelblue") +
-    labs(title = paste("Confusion Matrix with F1-Score:", round(f1_score, 3)), x = "Target", y = "Prediction") +
+    labs(title = paste("Confusion Matrix for Threshold = ", threshold, "with F1-Score:", round(f1_score, 3), "Error:", round(error, 3) , "Accuracy:", round(accuracy, 3)), x = "Target", y = "Prediction") +
     theme_minimal() +
     theme(axis.text = element_text(size = 8),
           plot.title = element_text(size = 8, face = "bold"))
@@ -232,22 +225,25 @@ create_confusion_matrix <- function(confusion_matrix) {
 
 # Confusion matrix with threshold = 0.4
 table(rain_n_test0$RainTomorrow, glm_predict_4_0)
-mean(glm_predict_4_0!=rain_n_test0$RainTomorrow)
+error4_0 <- mean(glm_predict_4_0!=rain_n_test0$RainTomorrow)
+accuracy4_0 <- mean(glm_predict_4_0==rain_n_test0$RainTomorrow)
 cm4_0 <- confusionMatrix(data = factor(glm_predict_4_0), reference = factor(rain_n_test0$RainTomorrow), mode ='everything')
 
 # Confusion matrix with threshold = 0.5
 table(rain_n_test0$RainTomorrow, glm_predict_5_0)
-mean(glm_predict_5_0!=rain_n_test0$RainTomorrow)
+error5_0 <- mean(glm_predict_5_0!=rain_n_test0$RainTomorrow)
+accuracy5_0 <- mean(glm_predict_5_0==rain_n_test0$RainTomorrow)
 cm5_0 <- confusionMatrix(data = factor(glm_predict_5_0), reference = factor(rain_n_test0$RainTomorrow), mode ='everything')
 
 # Confusion matrix with threshold = 0.6
 table(rain_n_test0$RainTomorrow, glm_predict_6_0)
-mean(glm_predict_6_0!=rain_n_test0$RainTomorrow)
+error6_0 <- mean(glm_predict_6_0!=rain_n_test0$RainTomorrow)
+accuracy6_0 <- mean(glm_predict_6_0==rain_n_test0$RainTomorrow)
 cm6_0 <- confusionMatrix(data = factor(glm_predict_6_0), reference = factor(rain_n_test0$RainTomorrow), mode ='everything')
 
-a0 <- create_confusion_matrix(cm4_0)
-b0 <- create_confusion_matrix(cm5_0)
-c0 <- create_confusion_matrix(cm6_0)
+a0 <- create_confusion_matrix(cm4_0, 0.4, error4_0, accuracy4_0)
+b0 <- create_confusion_matrix(cm5_0, 0.5, error5_0, accuracy5_0)
+c0 <- create_confusion_matrix(cm6_0, 0.6, error6_0, accuracy6_0)
 
 # Threshold of 0.05 is the best among thresholds in terms of accuracy, sensitivity, and specificity
 cm_all0 = list(a0, b0, c0)
@@ -304,22 +300,25 @@ glm_predict_6_balanced<- ifelse(glm_predict_balanced > threshold6, 1, 0)
 
 # Confusion matrix with threshold = 0.4
 table(rain_balanced_test$RainTomorrow, glm_predict_4_balanced)
-mean(glm_predict_4_balanced!=rain_balanced_test$RainTomorrow)
+error4_balanced <- mean(glm_predict_4_balanced!=rain_balanced_test$RainTomorrow)
+accuracy4_balanced <- mean(glm_predict_4_balanced==rain_balanced_test$RainTomorrow)
 cm4_balanced <- confusionMatrix(data = factor(glm_predict_4_balanced), reference = factor(rain_balanced_test$RainTomorrow), mode ='everything')
 
 # Confusion matrix with threshold = 0.5
 table(rain_balanced_test$RainTomorrow, glm_predict_5_balanced)
-mean(glm_predict_5_balanced!=rain_balanced_test$RainTomorrow)
+error5_balanced <- mean(glm_predict_5_balanced!=rain_balanced_test$RainTomorrow)
+accuracy5_balanced <- mean(glm_predict_5_balanced==rain_balanced_test$RainTomorrow)
 cm5_balanced <- confusionMatrix(data = factor(glm_predict_5_balanced), reference = factor(rain_balanced_test$RainTomorrow), mode ='everything')
 
 # Confusion matrix with threshold = 0.6
 table(rain_balanced_test$RainTomorrow, glm_predict_6_balanced)
-mean(glm_predict_6_balanced!=rain_balanced_test$RainTomorrow)
+error6_balanced <- mean(glm_predict_6_balanced!=rain_balanced_test$RainTomorrow)
+accuracy6_balanced <- mean(glm_predict_6_balanced==rain_balanced_test$RainTomorrow)
 cm6_balanced <- confusionMatrix(data = factor(glm_predict_6_balanced), reference = factor(rain_balanced_test$RainTomorrow), mode ='everything')
 
-a_balanced <- create_confusion_matrix(cm4_balanced)
-b_balanced <- create_confusion_matrix(cm5_balanced)
-c_balanced <- create_confusion_matrix(cm6_balanced)
+a_balanced <- create_confusion_matrix(cm4_balanced, 0.4, error4_balanced, accuracy4_balanced)
+b_balanced <- create_confusion_matrix(cm5_balanced, 0.5, error5_balanced, accuracy5_balanced)
+c_balanced <- create_confusion_matrix(cm6_balanced, 0.6, error6_balanced, accuracy6_balanced)
 
 # Threshold of 0.5 is the best among thresholds in terms of accuracy, sensitivity, and specificity
 cm_all_balanced = list(a_balanced, b_balanced, c_balanced)
@@ -385,22 +384,25 @@ glm_predict_6<- ifelse(glm_predict > threshold6, 1, 0)
 
 # Confusion matrix with threshold = 0.4
 table(rain_subset_test$RainTomorrow, glm_predict_4)
-mean(glm_predict_4!=rain_subset_test$RainTomorrow)
+error4 <- mean(glm_predict_4!=rain_subset_test$RainTomorrow)
+accuracy4 <- mean(glm_predict_4==rain_subset_test$RainTomorrow)
 cm4 <- confusionMatrix(data = factor(glm_predict_4), reference = factor(rain_subset_test$RainTomorrow), mode ='everything')
 
 # Confusion matrix with threshold = 0.5
 table(rain_subset_test$RainTomorrow, glm_predict_5)
-mean(glm_predict_5!=rain_subset_test$RainTomorrow)
+error5 <- mean(glm_predict_5!=rain_subset_test$RainTomorrow)
+accuracy5 <- mean(glm_predict_5==rain_subset_test$RainTomorrow)
 cm5 <- confusionMatrix(data = factor(glm_predict_5), reference = factor(rain_subset_test$RainTomorrow), mode ='everything')
 
 # Confusion matrix with threshold = 0.6
 table(rain_subset_test$RainTomorrow, glm_predict_6)
-mean(glm_predict_6!=rain_subset_test$RainTomorrow)
+error6 <- mean(glm_predict_6!=rain_subset_test$RainTomorrow)
+accuracy6 <- mean(glm_predict_6==rain_subset_test$RainTomorrow)
 cm6 <- confusionMatrix(data = factor(glm_predict_6), reference = factor(rain_subset_test$RainTomorrow), mode ='everything')
 
-a <- create_confusion_matrix(cm4)
-b <- create_confusion_matrix(cm5)
-c <- create_confusion_matrix(cm6)
+a <- create_confusion_matrix(cm4, 0.4, error4, accuracy4)
+b <- create_confusion_matrix(cm5, 0.5, error5, accuracy5)
+c <- create_confusion_matrix(cm6, 0.6, error6, accuracy6)
 
 cm_all = list(a, b, c)
 plot_width <- c(4, 4, 4) 
@@ -409,33 +411,46 @@ grid.arrange(grobs = cm_all, nrow = 3, width = plot_width)
 ```
 ##Comparison of 3 Models
 ```{r GLM Model Comparison}
-## Summary Statistics: F1-Score
+## Summary Statistics: F1-Score, Error, Accuracy
 
 models <- c("Simple GLM", "GLM with Balancing", "GLM with Balancing and Feature Selection")
-model_suffix <- c("_balanced", "_0", "")
+model_suffix <- c( "_0", "_balanced", "")
 
 thresholds <- c(4, 5, 6)
 threshold_values <- c(0.4, 0.5, 0.6)
 
-f1_scores <- data.frame(Model = character(), Threshold = numeric(), F1_Score = numeric(), stringsAsFactors = FALSE)
+metrics <- data.frame(Model = character(), Threshold = numeric(), F1_Score = numeric(), Error = numeric(), Accuracy = numeric(), stringsAsFactors = FALSE)
+
+j <-  1
 
 for (model in models) {
+  model_suff <- model_suffix[j]
+  j <-  j + 1
   for (i in 1:length(thresholds)) {
     threshold <- thresholds[i]
     threshold_value <- threshold_values[i]
-    
+
     # Calculate the F1 score for each combination of model and threshold
-    cm_name <- paste0("cm", thresholds[i], model_suffix[i])
+    cm_name <- paste0("cm", threshold, model_suff)
     cm <- get(cm_name)
     f1_score <- cm$byClass["F1"]
     
+    error_name <- paste0("error", threshold, model_suff)
+    error <- get(error_name)
+
+    accuracy_name <- paste0("accuracy", threshold, model_suff)
+    accuracy <- get(accuracy_name)
+    
     # Add the F1 score to the data frame
-    f1_scores <- rbind(f1_scores, data.frame(Model = model, Threshold = threshold_value, F1_Score = f1_score, stringsAsFactors = FALSE,row.names = NULL))
+    metrics <- rbind(metrics, data.frame(Model = model, Threshold = threshold_value, F1_Score = f1_score, Error = error, Accuracy = accuracy, stringsAsFactors = FALSE,row.names = NULL))
+    
   }
+  
 }
 
 
-f1_scores
+metrics
+
 
 ```
 ##Predictions 
@@ -756,10 +771,17 @@ A <- create_confusion_matrix(lda_CM04)
 B <- create_confusion_matrix(lda_CM05)
 C <- create_confusion_matrix(lda_CM06)
 
-# Threshold of 0.05 is the best among thresholds in terms of accuracy, sensitivity, and specificity
+# Threshold of 0.6 is the best among thresholds in terms of accuracy, sensitivity, and specificity
 CM_all_lda = list(A,B,C)
 plot_width <- c(4, 4, 4) 
 grid.arrange(grobs = CM_all_lda, nrow = 3, width = plot_width)
+```
+```{r LDA histogram}
+# We use now the information given by:
+# - x: linear combination of the variables that better describe the examples
+# - class: assigned class
+
+ldahist(pred_lda$x[,1], g = pred_lda$class, col = 2)
 ```
 
 ```{r QDA}
@@ -850,10 +872,11 @@ ggplot(data.frame(knn_test_error),
                     format((knn_test_error[k_min])*100, digits = 4), 
                     "%)"))
 ```
-#TODO: model comparisons, write analysis, and clean up code
+#TODO: Analysis, Clean Visualizations and Code
 
-## Visualization for LDA, QDA and KNN 
-```{r Visualization for LDA, QDA and KNN using scatter plots }
+## Analysis
+```{r Analysis }
+
 
 
 
