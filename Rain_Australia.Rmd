@@ -1,10 +1,18 @@
 ---
-title: "Rainfall_Predict"
-author: "Sofia Trogu"
-date: "2023-06-02"
-output: pdf_document
+title: "Will it Rain Tomorrow in Australia?"
+authors: Sofia Pope Trogu, Fairouz Baz Radwan, Auriane Mahfouz
+date: "2023-07-15"
+output:
+  pdf_document: 
+    toc: true
+    toc_depth: 2
+    number_sections: true
+    keep_tex: yes
+    fig_caption: yes
+latex_engine: pdflatex
+classoption: landscape
 ---
-
+## Import R Libraries
 ```{r import}
 library(corrplot)
 library(ggplot2)
@@ -23,32 +31,54 @@ library(knitr)
 library(glmnet)
 library(outliers)
 library(class)
+library(kableExtra)
 ```
 
 ## Download the Rain Dataset
+We downloaded the Rain Australia dataset as a CSV from the following link: https://www.kaggle.com/datasets/jsphyg/weather-dataset-rattle-package/code?datasetId=6012&searchQuery=visual. The dataset is originally composed of 23 columns and 145,460 examples. The aim of the data is to use available information about today's weather, i.e. Temperature, Humidity, Pressure, to predict whether it will rain tomorrow. Therefore, we originally start with 22 features and 1 target variable, RainTomorrow with binary classification (Yes=1, No=0). 
 ```{r data loading}
 file_path <- "/Users/Sofia/Desktop/Rain_Australia/weatherAUS.csv"
 rain <- read.csv(file_path)
 head(rain)
 summary(rain)
+dim(rain)
 ```
 
 ##TODO: Create Feature Table of Contents
+```{r load variable TOC}
+file_path2 <- "/Users/Sofia/Desktop/Rain_Australia/Feature_TOC.csv"
+feature_toc <- read.csv(file_path2)
+
+feature_toc %>%
+  knitr::kable(
+    format = "latex",
+    align = "l",
+    booktabs = TRUE,
+    longtable = TRUE,
+    linesep = "",
+    caption = "Table of features with description and units."
+    ) %>% row_spec(0,bold=TRUE) %>% 
+  kableExtra::kable_styling(
+      position = "left",
+      latex_options = c("striped", "repeat_header"),
+      stripe_color = "gray!15"
+    )
+```
 
 ## Data Preprocessing
+Once we've loaded the dataset, we executed a series of preprocessing steps required prior to running our subsequent predictive models and data analysis. First, we found and removed any columns and rows that were completely empty. Next, we re-encoded the binary columns, RainToday and RainTomorrow to have numerical values: 1,0 instead of "Yes", "No", respectively. Then, we removed unneeded categorical variables, such as date, location, windgustdir, and winddir at 9 am and 3 pm. Finally, we reformated the dataframe to be all numeric values to be compatabile with our further analysis methods. This process of data preprocessing led to a new dataset dimension of 56,420 × 18. 
 
 ```{r data preprocessing}
 # Find Empty Columns
 empty_columns <- which(colSums(is.na(rain)) == nrow(rain))
 names_of_empty_col<- names(rain)[empty_columns]
-names_of_empty_col
 
 dim(rain)
 
 # Omit rows with NAs. We are left with 56,420 rows and 23 columns
 rain <- na.omit(rain)
-print(rain)
 
+# Set Yes/No values to 1, 0, respectively for RainToday and RainTomorrow
 rain$RainToday <- ifelse(rain$RainToday == "Yes", 1,
                                      ifelse(rain$RainToday == "No", 0, rain$RainToday))
 
@@ -56,16 +86,18 @@ rain$RainToday <- ifelse(rain$RainToday == "Yes", 1,
 rain$RainTomorrow <- ifelse(rain$RainTomorrow == "Yes", 1,
                                      ifelse(rain$RainTomorrow == "No", 0, rain$RainToday))  
 
-#Remove date and location columns and hot encode wind directions
+#Remove date, location columns, and wind direction columns
 rain <- rain[, !(names(rain) %in% c('Date', 'Location', 'WindGustDir', 'WindDir9am', 'WindDir3pm'))]
 
-# 56,420 × 18
+# New dimension of rain: 56,420 × 18
 head(rain)
 
 rain <- as.data.frame(lapply(rain, as.numeric))
-print(summary(rain))
+summary(rain)
 ```
 ## Correlation 
+After data preprocessing, we began to investigate the feature values and how each feature correlated with the other respective features. To perform this analysis, we built a correlation matrix that calculates the correlation values between each feature, so it results in a n_feature x n_feature matrix. From the correlation matrix, we visualized the correlations in both a heatmap and a numerical correlation plot.These plots provide a good context for the project and helped inform our feature selection later on. 
+
 ```{r correlation}
 # Build a Correlation Matrix
 cor_matrix <- cor(rain)
@@ -73,13 +105,14 @@ cor_matrix <- cor(rain)
 # Create a heatmap from the correlation matrix with blue, white, and green color scheme
 heatmap(cor_matrix, col = colorRampPalette(c("blue", "white", "green"))(100))
 
-# Add a color legend
+# Add a color legend to corr_matrix
 legend_colors <- c("blue", "white", "green")
 legend("right", legend = c(-1, 0, 1), fill = legend_colors, title = "Correlation")
 
 # Add a main title
 title(main = "Correlation Heatmap")
 
+#Plot correlation matrix with numerical values
 corrplot <- corrplot(cor(rain[,-19]),
              method = "number",
              diag = TRUE,
@@ -90,6 +123,7 @@ corrplot <- corrplot(cor(rain[,-19]),
 
 
 ## Density Plots
+Based on the results of the correlation matrix, we further illustrated the features exhibiting the highest correlation using density and bar plots for the continuous and categorical variables, respectively against the target variable. From these plots, we identified the following trends. In the density plot with Sushine, we noted that the fraction of total days having higher sunshine are associated with more 0 RainTomorrow, and lower sunshine levels with more 1 RainTomorrow. Whereas, the Humidity3pm density plot appeared to have higher overlap between the two classes, but still higher humidity associated with 1 RainTomorrow and vice-versa. In the density plots with the two Cloud variables (9 am and 3 pm), we observed more oscillation across the x-axis with higher discrepencies in the target class at the two extremes. Finally, the representation of the RainToday binary variable against the target variable in a bar chart expresses the strong correlation between the classes of the two variables. We found a similar number of samples with both RainToday and RainTomorrow equal to 0 and vice-versa.   
 
 ```{r density}
 ## Find features with highest correlation with target variable (RainTomorrow)
@@ -139,17 +173,15 @@ for (col in column_names) {
   }
   
 }
-print(plot_list)
+
+# Visualize density and bar plots
 grid.arrange(grobs = plot_list, nrow = 3, ncol = 2)
 
-# Sunshine: fraction of total days having higher sunshine record more 0 RainTomorrow, lower sunshine, more 1 RainTomorrow
-# Humidity3pm: overlap more but still higher humidity associated with 1 RainTomorrow and vice versa
-#Cloud9am/Cloud3pm: oscillates a bit across x-axis with higher discrepancies between RainTomorrow values at the two extremes.  
-#RainToday: Since RainToday is a binary variable, the density plots are concentrated around 0 and 1. When RainToday =0, there is a bigger discrepancy between 0 and 1 for RainTomorrow. 
+
 
 ```
 ## Feature Scaling
-
+One additional preprocessing step that is vital to statistical learning methodologies is the application of feature scaling. Particularly when we are creating similarity measures, i.e. Euclidean distances, correlations, it is important to ensure your feature values fall within a similar range. There are different feature scaling techniques to standardize the range of feature values, but we chose min/max normalization. The min/max scaling takes each feature value, subtracts the minimum feature value and divides the difference by the difference between the maximum and minimum values. In our project, we applied the the min/max scaling to all the continuous variables, but kept the two binary variables, RainToday and RainTomorrow (our target) the same. 
 ```{r feature scaling}
 
 # Check distribution of RainTomorrow values to see how balanced the data is
@@ -158,20 +190,23 @@ table(rain$RainTomorrow)
 
 # Handling balancing of data below in train/test split
 
-# Feature Scaling
+# Feature Scaling: Scale feature values using min/max scaling
 min_max_norm <- function(x) {(x - min(x)) / (max(x) - min(x))}
 
 rain_n <- as.data.frame(lapply(rain[,1:16], min_max_norm))
 
-#Add back in Binary Feature, RainToday and target variable
+#Add back in Binary Features: RainToday and target variable, RainTomorrow
 rain_n$RainToday <- rain$RainToday
 rain_n$RainTomorrow <- rain$RainTomorrow
 ```
-##Logistic Regressiong without balancing or feature selection
+##First Logistic Regression Model: without balancing or feature selection
 ```{r log. regression w/o balancing or feature selection}
 #Test/Train Split
+
+#Set Seed for Reproducibility 
 set.seed(123)
 
+# Set Training Set Size to 75% of Total Dataset
 train0 <- sample(1:nrow(rain_n), nrow(rain_n) * 0.75)
 
 # Calculate the test indices
@@ -180,18 +215,24 @@ test0 <- setdiff(1:nrow(rain_n), train0)
 # Split the target variable into train and test sets
 rain_n_train0 <- rain_n[train0,]
 rain_n_test0 <- rain_n[test0 ,]
+
+# Run GLM Logistic Regression Model using Training Set
 glm_model0 <- glm(data = rain_n_train0, 
         rain_n_train0$RainTomorrow ~ ., 
         family = binomial)
 
-#R squared and Variance Inflation Factor (VIF)
-#If the VIF value for a predictor variable is greater than 1, it indicates the presence of multicollinearity, suggesting that the predictor variable is highly correlated with other predictor variables in the model. 
+# R squared and Variance Inflation Factor (VIF)
+
+# R squared: Coefficient of Determination, gives the proportion of deviance explained by the model
+# VIF: If the VIF value for a predictor variable is greater than 1, it indicates the presence of multicollinearity, suggesting that the predictor variable is highly correlated with other predictor variables in the model. 
+
 model_summary0 <- summary(glm_model0)
 summary(glm_model0)
+
 r2_0 <- 1 - (model_summary0$deviance/model_summary0$null.deviance) # 0.3698141
 vif0 <- 1/(1-r2_0) # 1.586833
 
-#Predict test with model
+#Predict test using glm model
 glm_predict0 <- predict(glm_model0, rain_n_test0, type = "response")
 
 #Convert predictions into 0,1 based on different thresholds
@@ -203,6 +244,9 @@ threshold6 <- 0.6
 glm_predict_4_0<- ifelse(glm_predict0 > threshold4, 1, 0)
 glm_predict_5_0<- ifelse(glm_predict0 > threshold5, 1, 0)
 glm_predict_6_0<- ifelse(glm_predict0 > threshold6, 1, 0)
+
+# Function to create a confusion matrix with F1 score, error and accuracy rate
+# A confusion matrix is a table that is often used to evaluate the performance of a classification model. It provides a summary of the predicted and actual values for a set of data points. The matrix allows us to assess how well the model is performing in terms of correctly and incorrectly classifying the data. 
 
 create_confusion_matrix <- function(confusion_matrix, threshold, error, accuracy) {
   # Extract the confusion matrix table
@@ -224,19 +268,16 @@ create_confusion_matrix <- function(confusion_matrix, threshold, error, accuracy
 }
 
 # Confusion matrix with threshold = 0.4
-table(rain_n_test0$RainTomorrow, glm_predict_4_0)
 error4_0 <- mean(glm_predict_4_0!=rain_n_test0$RainTomorrow)
 accuracy4_0 <- mean(glm_predict_4_0==rain_n_test0$RainTomorrow)
 cm4_0 <- confusionMatrix(data = factor(glm_predict_4_0), reference = factor(rain_n_test0$RainTomorrow), mode ='everything')
 
 # Confusion matrix with threshold = 0.5
-table(rain_n_test0$RainTomorrow, glm_predict_5_0)
 error5_0 <- mean(glm_predict_5_0!=rain_n_test0$RainTomorrow)
 accuracy5_0 <- mean(glm_predict_5_0==rain_n_test0$RainTomorrow)
 cm5_0 <- confusionMatrix(data = factor(glm_predict_5_0), reference = factor(rain_n_test0$RainTomorrow), mode ='everything')
 
 # Confusion matrix with threshold = 0.6
-table(rain_n_test0$RainTomorrow, glm_predict_6_0)
 error6_0 <- mean(glm_predict_6_0!=rain_n_test0$RainTomorrow)
 accuracy6_0 <- mean(glm_predict_6_0==rain_n_test0$RainTomorrow)
 cm6_0 <- confusionMatrix(data = factor(glm_predict_6_0), reference = factor(rain_n_test0$RainTomorrow), mode ='everything')
@@ -252,6 +293,8 @@ grid.arrange(grobs = cm_all0, nrow = 3, width = plot_width)
 
 ```
 ## Balancing
+As we observed earlier, the original data wasn't balanced, in which 0 was the majority class with over 40,000 and 1 had only about 12,000 samples. To account for this imbalance, we performed a method of downsampling, whereby we reduced the number of samples in the majority class (0) to the same number of samples of the minority class (1). This methodology may reduce the pool of data we have available, but it removes the bias in our model predictions toward one dominating class. 
+
 ```{r balancing}
 #Downsamples majority class(0) 
 #Added yname to specify the target variable in downSample function, ow it assumes first col is target
@@ -701,7 +744,7 @@ theme(legend.position="none") +
 ylab("Cloud9am")
 #print(g9)
 chisq.out.test(rain_subset_train$Cloud9am)
-which(rain_subset_train$Cloud9am ==0) # we got a p-value of 0.07 so we cannot refute the null hypothesis 
+# which(rain_subset_train$Cloud9am ==0) # we got a p-value of 0.07 so we cannot refute the null hypothesis 
 
 
 
@@ -712,7 +755,7 @@ theme(legend.position="none") +
 ylab("Cloud3pm")
 #print(g10)
 chisq.out.test(rain_subset_train$Cloud3pm) #p-value = 0.04988 
-which(rain_subset_train$Cloud3pm ==0)
+#which(rain_subset_train$Cloud3pm ==0)
 
 
 
@@ -744,36 +787,36 @@ lda
 pred_lda<- predict(lda, rain_subset_test, type = "response")
 
 post_lda<- pred_lda$posterior
- 
+
 pred_lda_04<- as.factor(ifelse(post_lda[,2] > threshold4, 1, 0))
 pred_lda_05<- as.factor(ifelse(post_lda[,2] > threshold5, 1, 0))
 pred_lda_06<- as.factor(ifelse(post_lda[,2] > threshold6, 1, 0))
 
 
 # Confusion matrix with threshold = 0.4
-table(rain_subset_test$RainTomorrow, pred_lda_04)
-mean(pred_lda_04!=rain_subset_test$RainTomorrow)
+error_lda4 <- mean(pred_lda_04!=rain_subset_test$RainTomorrow)
+accuracy_lda4 <- mean(pred_lda_04==rain_subset_test$RainTomorrow)
 lda_CM04 <- confusionMatrix(data = factor(pred_lda_04), reference = factor(rain_subset_test$RainTomorrow), mode ='everything')
 
 # Confusion matrix with threshold = 0.5
-table(rain_subset_test$RainTomorrow, pred_lda_05)
-mean(pred_lda_05!=rain_subset_test$RainTomorrow)
+error_lda5 <- mean(pred_lda_05!=rain_subset_test$RainTomorrow)
+accuracy_lda5 <- mean(pred_lda_05==rain_subset_test$RainTomorrow)
 lda_CM05 <- confusionMatrix(data = factor(pred_lda_05), reference = factor(rain_subset_test$RainTomorrow), mode ='everything')
 
 # Confusion matrix with threshold = 0.6
-table(rain_subset_test$RainTomorrow, pred_lda_06)
-mean(pred_lda_06!=rain_subset_test$RainTomorrow)
+error_lda6 <- mean(pred_lda_06!=rain_subset_test$RainTomorrow)
+accuracy_lda6 <- mean(pred_lda_06==rain_subset_test$RainTomorrow)
 lda_CM06 <- confusionMatrix(data = factor(pred_lda_06), reference = factor(rain_subset_test$RainTomorrow), mode ='everything')
 
 
 
-A <- create_confusion_matrix(lda_CM04)
-B <- create_confusion_matrix(lda_CM05)
-C <- create_confusion_matrix(lda_CM06)
+A <- create_confusion_matrix(lda_CM04, 0.4, error_lda4, accuracy_lda4)
+B <- create_confusion_matrix(lda_CM05, 0.5, error_lda5, accuracy_lda5)
+C <- create_confusion_matrix(lda_CM06, 0.6, error_lda6, accuracy_lda6)
 
 # Threshold of 0.6 is the best among thresholds in terms of accuracy, sensitivity, and specificity
 CM_all_lda = list(A,B,C)
-plot_width <- c(4, 4, 4) 
+plot_width <- c(4, 4, 4)
 grid.arrange(grobs = CM_all_lda, nrow = 3, width = plot_width)
 ```
 ```{r LDA histogram}
@@ -798,23 +841,23 @@ pred_qda_06<- as.factor(ifelse(post_qda[,2] > threshold6, 1, 0))
 
 
 # Confusion matrix with threshold = 0.4
-table(rain_subset_test$RainTomorrow, pred_qda_04)
-mean(pred_qda_04!=rain_subset_test$RainTomorrow)
+error_qda4 <- mean(pred_qda_04!=rain_subset_test$RainTomorrow)
+accuracy_qda4 <- mean(pred_qda_04==rain_subset_test$RainTomorrow)
 qda_CM04 <- confusionMatrix(data = factor(pred_qda_04), reference = factor(rain_subset_test$RainTomorrow), mode ='everything')
 
 # Confusion matrix with threshold = 0.5
-table(rain_subset_test$RainTomorrow, pred_qda_05)
-mean(pred_qda_05!=rain_subset_test$RainTomorrow)
+error_qda5 <- mean(pred_qda_05!=rain_subset_test$RainTomorrow)
+accuracy_qda5 <- mean(pred_qda_05==rain_subset_test$RainTomorrow)
 qda_CM05 <- confusionMatrix(data = factor(pred_qda_05), reference = factor(rain_subset_test$RainTomorrow), mode ='everything')
 
 # Confusion matrix with threshold = 0.6
-table(rain_subset_test$RainTomorrow, pred_qda_06)
-mean(pred_qda_06!=rain_subset_test$RainTomorrow)
+error_qda6 <- mean(pred_qda_06!=rain_subset_test$RainTomorrow)
+accuracy_qda6 <- mean(pred_qda_06==rain_subset_test$RainTomorrow)
 qda_CM06 <- confusionMatrix(data = factor(pred_qda_06), reference = factor(rain_subset_test$RainTomorrow), mode ='everything')
 
-A <- create_confusion_matrix(qda_CM04)
-B <- create_confusion_matrix(qda_CM05)
-C <- create_confusion_matrix(qda_CM06)
+A <- create_confusion_matrix(qda_CM04, 0.4, error_qda4, accuracy_qda4)
+B <- create_confusion_matrix(qda_CM05, 0.5, error_qda5, accuracy_qda5)
+C <- create_confusion_matrix(qda_CM06, 0.6, error_qda6, accuracy_qda6)
 
 # Threshold of 0.05 is the best among thresholds in terms of accuracy, sensitivity, and specificity
 CM_all_qda = list(A,B,C)
