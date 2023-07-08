@@ -37,7 +37,7 @@ library(kableExtra)
 ## Download the Rain Dataset
 We downloaded the Rain Australia dataset as a CSV from the following link: https://www.kaggle.com/datasets/jsphyg/weather-dataset-rattle-package/code?datasetId=6012&searchQuery=visual. The dataset is originally composed of 23 columns and 145,460 examples. The aim of the data is to use available information about today's weather, i.e. Temperature, Humidity, Pressure, to predict whether it will rain tomorrow. Therefore, we originally start with 22 features and 1 target variable, RainTomorrow with binary classification (Yes=1, No=0). 
 ```{r data loading}
-file_path <- "/Users/Sofia/Desktop/Rain_Australia/weatherAUS.csv"
+file_path <- "/Users/Lenovo/Desktop/stat project/australia_rain/weatherAUS.csv"
 rain <- read.csv(file_path)
 head(rain)
 summary(rain)
@@ -46,7 +46,7 @@ dim(rain)
 
 ##TODO: Create Feature Table of Contents
 ```{r load variable TOC}
-file_path2 <- "/Users/Sofia/Desktop/Rain_Australia/Feature_TOC.csv"
+file_path2 <- "/Users/Lenovo/Desktop/stat project/australia_rain/Feature_TOC2.csv"
 feature_toc <- read.csv(file_path2)
 
 feature_toc %>%
@@ -65,8 +65,8 @@ feature_toc %>%
     )
 ```
 
-## Data Preprocessing
-Once we've loaded the dataset, we executed a series of preprocessing steps required prior to running our subsequent predictive models and data analysis. First, we found and removed any columns and rows that were completely empty. Next, we re-encoded the binary columns, RainToday and RainTomorrow to have numerical values: 1,0 instead of "Yes", "No", respectively. Then, we removed unneeded categorical variables, such as date, location, windgustdir, and winddir at 9 am and 3 pm. Finally, we reformated the dataframe to be all numeric values to be compatabile with our further analysis methods. This process of data preprocessing led to a new dataset dimension of 56,420 × 18. 
+## Data Pre-processing
+Once we've loaded the dataset, we executed a series of pre-processing steps required prior to running our subsequent predictive models and data analysis. First, we found and removed any columns and rows that were completely empty. Next, we re-encoded the binary columns, RainToday and RainTomorrow to have numerical values: 1,0 instead of "Yes", "No", respectively. Then, we removed unneeded categorical variables, such as date, location, windgustdir, and winddir at 9 am and 3 pm. Finally, we reformated the dataframe to be all numeric values to be compatible with our further analysis methods. This process of data pre-processing led to a new dataset dimension of 56,420 × 18. 
 
 ```{r data preprocessing}
 # Find Empty Columns
@@ -96,7 +96,7 @@ rain <- as.data.frame(lapply(rain, as.numeric))
 summary(rain)
 ```
 ## Correlation 
-After data preprocessing, we began to investigate the feature values and how each feature correlated with the other respective features. To perform this analysis, we built a correlation matrix that calculates the correlation values between each feature, so it results in a n_feature x n_feature matrix. From the correlation matrix, we visualized the correlations in both a heatmap and a numerical correlation plot.These plots provide a good context for the project and helped inform our feature selection later on. 
+After data pre-processing, we began to investigate the feature values and how each feature correlated with the other respective features. To perform this analysis, we built a correlation matrix that calculates the correlation values between each feature, so it results in a n_feature x n_feature matrix. From the correlation matrix, we visualized the correlations in both a heatmap and a numerical correlation plot.These plots provide a good context for the project and helped motivate our feature selection later on. 
 
 ```{r correlation}
 # Build a Correlation Matrix
@@ -123,7 +123,7 @@ corrplot <- corrplot(cor(rain[,-19]),
 
 
 ## Density Plots
-Based on the results of the correlation matrix, we further illustrated the features exhibiting the highest correlation using density and bar plots for the continuous and categorical variables, respectively against the target variable. From these plots, we identified the following trends. In the density plot with Sushine, we noted that the fraction of total days having higher sunshine are associated with more 0 RainTomorrow, and lower sunshine levels with more 1 RainTomorrow. Whereas, the Humidity3pm density plot appeared to have higher overlap between the two classes, but still higher humidity associated with 1 RainTomorrow and vice-versa. In the density plots with the two Cloud variables (9 am and 3 pm), we observed more oscillation across the x-axis with higher discrepencies in the target class at the two extremes. Finally, the representation of the RainToday binary variable against the target variable in a bar chart expresses the strong correlation between the classes of the two variables. We found a similar number of samples with both RainToday and RainTomorrow equal to 0 and vice-versa.   
+Based on the results of the correlation matrix, we further illustrated the features exhibiting the highest correlation using density and bar plots for the continuous and categorical variables, respectively against the target variable. From these plots, we identified the following trends: In the density plot with Sushine, we noted that the fraction of total days having higher sunshine are associated with more 0 RainTomorrow, and lower sunshine levels with more 1 RainTomorrow; Whereas, the Humidity3pm density plot appeared to have higher overlap between the two classes, but still higher humidity associated with 1 RainTomorrow and vice-versa. In the density plots with the two Cloud variables (9 am and 3 pm), we observed more oscillation across the x-axis with higher discrepancies in the target class at the two extremes. Finally, the representation of the RainToday binary variable against the target variable in a bar chart expresses the strong correlation between the classes of the two variables.We found a similar number of samples with both RainToday and RainTomorrow equal to 0 and vice-versa.   
 
 ```{r density}
 ## Find features with highest correlation with target variable (RainTomorrow)
@@ -181,14 +181,9 @@ grid.arrange(grobs = plot_list, nrow = 3, ncol = 2)
 
 ```
 ## Feature Scaling
-One additional preprocessing step that is vital to statistical learning methodologies is the application of feature scaling. Particularly when we are creating similarity measures, i.e. Euclidean distances, correlations, it is important to ensure your feature values fall within a similar range. There are different feature scaling techniques to standardize the range of feature values, but we chose min/max normalization. The min/max scaling takes each feature value, subtracts the minimum feature value and divides the difference by the difference between the maximum and minimum values. In our project, we applied the the min/max scaling to all the continuous variables, but kept the two binary variables, RainToday and RainTomorrow (our target) the same. 
+One additional pre-processing step that is vital to statistical learning methodologies is the application of feature scaling. Particularly when we are creating similarity measures, i.e. Euclidean distances, correlations, it is important to ensure your feature values fall within a similar range. There are different feature scaling techniques to standardize the range of feature values, but we chose min/max normalization. The min/max scaling takes each feature value, subtracts the minimum feature value and divides the result by the difference between the maximum and minimum values. In our project, we applied the min/max scaling to all the continuous variables, but kept the two binary variables, RainToday and RainTomorrow (our target) the same. 
 ```{r feature scaling}
 
-# Check distribution of RainTomorrow values to see how balanced the data is
-# 0: 43993; 1: 12427 
-table(rain$RainTomorrow)
-
-# Handling balancing of data below in train/test split
 
 # Feature Scaling: Scale feature values using min/max scaling
 min_max_norm <- function(x) {(x - min(x)) / (max(x) - min(x))}
@@ -199,9 +194,17 @@ rain_n <- as.data.frame(lapply(rain[,1:16], min_max_norm))
 rain_n$RainToday <- rain$RainToday
 rain_n$RainTomorrow <- rain$RainTomorrow
 ```
+###Regression Models 
+Our primary goal for this project was to build predictive models in order to implement a binary classification on our dataset. An intuitive approach to achieve that is the Logistic Regression model, which is a statistical modeling technique used to predict binary outcomes given a set of variables.
+In our report, we chose to implement several versions of this model, where we incorporated the pre-processing techniques discussed in this report. We first started by applying a logistic regression on the original dataset, split into a train and test sets, with neither balancing nor feature selection. We then implemented two other models, the first with balancing alone and the second with both balancing and feature selection. Furthermore, to clearly see how effective each model is, we ran predictions on the test set, plotted the confusion matrices, and visualized different performance metrics such as f1-score, accuracy and error. For each of these predictions, we tried out different threshold values (0.4,0.5,0.6) for the final classification. 
+
+##Train/Test split 
+Prior to feeding our data to our model, we implemented the train/test split which is a common machine learning technique which involves splitting the original dataset into two subsets: the training set and the test set. The training set is usually made up of the majority of the dataset and is used for training, where the model learns the best hyperparameters, without playing any part in the evaluation phase. On the other hand, the test set is exclusively used for testing our model's performance at predicting classes.
+
 ##First Logistic Regression Model: without balancing or feature selection
 ```{r log. regression w/o balancing or feature selection}
-#Test/Train Split
+#Train/Test Split
+
 
 #Set Seed for Reproducibility 
 set.seed(123)
@@ -223,8 +226,9 @@ glm_model0 <- glm(data = rain_n_train0,
 
 # R squared and Variance Inflation Factor (VIF)
 
-# R squared: Coefficient of Determination, gives the proportion of deviance explained by the model
-# VIF: If the VIF value for a predictor variable is greater than 1, it indicates the presence of multicollinearity, suggesting that the predictor variable is highly correlated with other predictor variables in the model. 
+#R-squared (Coefficient of Determination): R-squared is a statistical metric that measures the proportion of the variance in the dependent variable (target variable) that can be explained by the independent variables (predictor variables) in a regression model. It provides an indication of how well the regression model fits the observed data.
+# VIF: is a measure used to detect multicollinearity in a regression model. If the VIF value for a predictor variable is greater than 1, it indicates the presence of multicollinearity, suggesting that the predictor variable is highly correlated with other predictor variables in the model which makes it hard to assess the individual effects of each predictor on the dependent variable accurately. 
+
 
 model_summary0 <- summary(glm_model0)
 summary(glm_model0)
@@ -246,7 +250,7 @@ glm_predict_5_0<- ifelse(glm_predict0 > threshold5, 1, 0)
 glm_predict_6_0<- ifelse(glm_predict0 > threshold6, 1, 0)
 
 # Function to create a confusion matrix with F1 score, error and accuracy rate
-# A confusion matrix is a table that is often used to evaluate the performance of a classification model. It provides a summary of the predicted and actual values for a set of data points. The matrix allows us to assess how well the model is performing in terms of correctly and incorrectly classifying the data. 
+# A confusion matrix is a table that is often used to evaluate the performance of a classification model. It provides a summary of the predicted and actual values for a set of data points. The matrix allows us to assess how well the model is performing in terms of correctly and incorrectly classifying the data. The rows correspond to the predicted classes and the columns represent the actual targets.
 
 create_confusion_matrix <- function(confusion_matrix, threshold, error, accuracy) {
   # Extract the confusion matrix table
@@ -293,9 +297,17 @@ grid.arrange(grobs = cm_all0, nrow = 3, width = plot_width)
 
 ```
 ## Balancing
-As we observed earlier, the original data wasn't balanced, in which 0 was the majority class with over 40,000 and 1 had only about 12,000 samples. To account for this imbalance, we performed a method of downsampling, whereby we reduced the number of samples in the majority class (0) to the same number of samples of the minority class (1). This methodology may reduce the pool of data we have available, but it removes the bias in our model predictions toward one dominating class. 
+In addition to feature scaling, balancing our data is another technique used to prepare data before applying predictive modeling. Balancing reduces the effect of the dominating class which results in high bias and unreliable predictions. In order to balance data, there are several under-sampling and over-sampling methods that can be used depending on the characteristics of the dataset.
+As we will observe in the code below, our original data isn't balanced, in which 0 is the majority class with over 40,000 and 1 has only about 12,000 samples. To account for this imbalance, we performed a method of under-sampling, whereby we reduced the number of samples in the majority class (0) to the same number of samples of the minority class (1). This methodology may reduce the pool of data we have available, but it removes the bias in our model predictions toward one dominating class. We opted against using over-sampling as that might add unwanted noise to our data which might also lead to unreliable results.
 
 ```{r balancing}
+
+
+# Check distribution of RainTomorrow values to see how balanced the data is
+# 0: 43993; 1: 12427 
+table(rain$RainTomorrow)
+
+
 #Downsamples majority class(0) 
 #Added yname to specify the target variable in downSample function, ow it assumes first col is target
 rain_balanced <- downSample(x = rain_n[, -which(names(rain_n) == "RainTomorrow")], 
@@ -308,6 +320,7 @@ head(rain_balanced)
 sum(is.na(rain_balanced$RainTomorrow))
 
 ```
+
 ## Logistic Regression before Feature Selection
 ```{r log. regression pre feature selection}
 #Test/Train Split
@@ -369,6 +382,10 @@ plot_width <- c(4, 4, 4)
 grid.arrange(grobs = cm_all_balanced, nrow = 3, width = plot_width)
 
 ```
+##Feature Selection explanation 
+
+
+
 ## Feature Selection (Backward Selection using BIC)
 ```{r feature selection}
 
