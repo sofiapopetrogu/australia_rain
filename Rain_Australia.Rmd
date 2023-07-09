@@ -37,7 +37,7 @@ library(kableExtra)
 ## Download the Rain Dataset
 We downloaded the Rain Australia dataset as a CSV from the following link: https://www.kaggle.com/datasets/jsphyg/weather-dataset-rattle-package/code?datasetId=6012&searchQuery=visual. The dataset is originally composed of 23 columns and 145,460 examples. The aim of the data is to use available information about today's weather, i.e. Temperature, Humidity, Pressure, to predict whether it will rain tomorrow. Therefore, we originally start with 22 features and 1 target variable, RainTomorrow with binary classification (Yes=1, No=0). 
 ```{r data loading}
-file_path <- "/Users/Lenovo/Desktop/stat project/australia_rain/weatherAUS.csv"
+file_path <- "/Users/Sofia/Desktop/Rain_Australia/weatherAUS.csv"
 rain <- read.csv(file_path)
 head(rain)
 summary(rain)
@@ -46,7 +46,7 @@ dim(rain)
 
 ##TODO: Create Feature Table of Contents
 ```{r load variable TOC}
-file_path2 <- "/Users/Lenovo/Desktop/stat project/australia_rain/Feature_TOC2.csv"
+file_path2 <- "/Users/Sofia/Desktop/Rain_Australia/Feature_TOC2.csv"
 feature_toc <- read.csv(file_path2)
 
 feature_toc %>%
@@ -338,8 +338,6 @@ glm_model_balanced <- glm(data = rain_balanced_train,
         rain_balanced_train$RainTomorrow ~ ., 
         family = binomial)
 
-#R squared and Variance Inflation Factor (VIF)
-#If the VIF value for a predictor variable is greater than 1, it indicates the presence of multicollinearity, suggesting that the predictor variable is highly correlated with other predictor variables in the model. 
 model_summary_balanced <- summary(glm_model_balanced)
 summary(glm_model_balanced)
 r2_balanced <- 1 - (model_summary_balanced$deviance/model_summary_balanced$null.deviance) # 0.3849359
@@ -382,9 +380,8 @@ plot_width <- c(4, 4, 4)
 grid.arrange(grobs = cm_all_balanced, nrow = 3, width = plot_width)
 
 ```
-##Feature Selection explanation 
-
-
+##Feature Selection
+Feature selection is another key step in predictive model definition. The selection method involves evaluating all the features provided in the original dataset and selecting the most relevant features that best describe and predict our data. By identifying a smaller subset of important features, we are ensuring that the model doesn't overfit on the training data and is able to generalize on new data. Several techniques can be implemented to apply feature selection. Forward and backward selection iterate through all the features to determine each feature's effect on the overall model by cumulatively adding features from an empty set or removing features one at a time from the full set, respectively. Moreover, the two methods can be integrated to obtain a more exhaustive feature selection. Within the configuration of forward and backward selection using Akaike Information Criterion (AIC) or Bayesian Information Criterion (BIC), you can select the degree of penalization for the amount of features through the choice of k. The penalty term increases proportionally with the number of parameters set by k, which ensures that the complexity of the model is taken into account and to avoid overfitting. We chose to configure backward selection using BIC, which incorporates a log term and penalizes complex models more than AIC. 
 
 ## Feature Selection (Backward Selection using BIC)
 ```{r feature selection}
@@ -392,7 +389,7 @@ grid.arrange(grobs = cm_all_balanced, nrow = 3, width = plot_width)
 # Perform logistic regression with backward stepwise selection
 logit_model <- glm(rain_balanced$RainTomorrow ~ ., data = rain_balanced, family = binomial)  
 
-# Perform forward stepwise selection using AIC with log(n)
+# Perform forward stepwise selection using BIC with log(n)
 logit_model <- stepAIC(logit_model, direction = "backward", k = log(nrow(rain_balanced)), trace = FALSE)
 
 # Print the summary of the logistic regression model
@@ -404,7 +401,6 @@ rain_subset <- rain_balanced[, c("MinTemp", "Sunshine", "WindGustSpeed", "WindSp
 ```
 #Train/Test Split
 ```{r train/test split}
-
 set.seed(123)
 
 train <- sample(1:nrow(rain_subset), nrow(rain_subset) * 0.75)
@@ -426,8 +422,6 @@ glm_model <- glm(data = rain_subset_train,
         rain_subset_train$RainTomorrow ~ ., 
         family = binomial)
 
-#R squared and Variance Inflation Factor (VIF)
-#If the VIF value for a predictor variable is greater than 1, it indicates the presence of multicollinearity, suggesting that the predictor variable is highly correlated with other predictor variables in the model. 
 model_summary <- summary(glm_model)
 summary(glm_model)
 r2 <- 1 - (model_summary$deviance/model_summary$null.deviance) # 0.3845522
@@ -470,6 +464,8 @@ grid.arrange(grobs = cm_all, nrow = 3, width = plot_width)
 
 ```
 ##Comparison of 3 Models
+In the following plots, we compared each of the performance metrics previously computed across all the logistic regression models for each prediction threshold. By observing the results, we noticed close performance across all the models, with the simplest model before balancing and feature selection showing a slightly higher accuracy and F1 score, and lower error rate.
+
 ```{r GLM Model Comparison}
 ## Summary Statistics: F1-Score, Error, Accuracy
 
@@ -508,12 +504,11 @@ for (model in models) {
   
 }
 
-
 metrics
-
-
 ```
-##Predictions 
+##Visualizing data classifications from predictions
+In addition to comparing performance metrics across the three models, we also sought to visualize the separation of classes in scatter plots between two predictive features: Sunshine and Temp3pm. As seen for the majority of the features, we are unable to completely separate the classes in the scatterplots since the features are highly correlated. 
+
 ```{r Visualizing data classifications}
 
 #for different features: mintemp an temp3pm
@@ -525,10 +520,6 @@ labs(x = "Mintemp",
 y = "Temp3pm",
 color = "Rain Tomorrow") +
 theme(legend.position = c(0.8, 0.8))
-
-print(a00)
-#since the 2 features are highly correlated, we cannot see a clear separation of the classes in the scatter plot 
-
 
 # original classification 
 a0 <- ggplot(data = rain_n_test0 , aes(x = Sunshine,
@@ -575,10 +566,46 @@ theme(legend.position = c(0.8, 0.8))
 
 grid.arrange(a0, a2, b2, c2, nrow = 2)
 
-
 ```
-```{r X and y for Subset}
 
+```{r logistic regression plots}
+predicted_data<- data.frame(prob_of_rain = glm_predict0, RainTomorrow = rain_n_test0$RainTomorrow)
+predicted_data<- predicted_data[order(predicted_data$prob_of_rain, decreasing = FALSE),]
+predicted_data$rank<-  1:nrow(predicted_data)
+
+a3<- ggplot(data = predicted_data, aes(x = rank, y = prob_of_rain)) +
+  geom_point(aes(color = as.factor(RainTomorrow)), alpha = 1, shape = 1, stroke = 1) +
+  xlab("Index") +
+  ylab("Predicted probability") +
+  ggtitle("Estimated Logistic Curve - Simple GLM") +
+  labs(color = "Rain Tomorrow") 
+
+predicted_data<- data.frame(prob_of_rain = glm_predict_balanced, RainTomorrow = rain_balanced_test$RainTomorrow)
+predicted_data<- predicted_data[order(predicted_data$prob_of_rain, decreasing = FALSE),]
+predicted_data$rank<-  1:nrow(predicted_data)
+
+b3<- ggplot(data = predicted_data, aes(x = rank, y = prob_of_rain)) +
+  geom_point(aes(color = as.factor(RainTomorrow)), alpha = 1, shape = 1, stroke = 1) +
+  xlab("Index") +
+  ylab("Predicted probability") +
+  ggtitle("Estimated Logistic Curve - Simple GLM with Balancing") +
+  labs(color = "Rain Tomorrow") 
+
+predicted_data<- data.frame(prob_of_rain = glm_predict, RainTomorrow = rain_balanced_test$RainTomorrow)
+predicted_data<- predicted_data[order(predicted_data$prob_of_rain, decreasing = FALSE),]
+predicted_data$rank<-  1:nrow(predicted_data)
+
+c3<- ggplot(data = predicted_data, aes(x = rank, y = prob_of_rain)) +
+  geom_point(aes(color = as.factor(RainTomorrow)), alpha = 1, shape = 1, stroke = 1) +
+  xlab("Index") +
+  ylab("Predicted probability") +
+  ggtitle("Estimated Logistic Curve - Simple GLM with Balancing and Feature Selection") +
+  labs(color = "Rain Tomorrow") 
+
+grid.arrange(a3, b3, c3, nrow = 3)
+```
+
+```{r X and y for Subset}
 X_train_subset <- model.matrix(RainTomorrow~., data=rain_subset_train)
 X_test_subset <- model.matrix(RainTomorrow~., data=rain_subset_test)
 X_train_subset <- X_train_subset[,-1]
@@ -590,10 +617,13 @@ y_test_subset <- rain_subset_test$RainTomorrow
 ```
 
 ## LASSO and Ridge Regression
-```{r ridge regression and lasso}
+Beyond the standard logistic regression models, we chose to implement two alternative regularization models: LASSO and Ridge Regression. Both regularization techniques introduce a penalty team to the standard regression model; Least Absolute Shrinkage and Selection Operator (LASSO) regression utilizes the L1 norm, which is the sum of the absolute value of the parameters multiplied by a hyperparamter, lambda, whereas Ridge Regression uses the L2 norm, which is the square root of the sum of squared parameters multiplied by the lambda hyperparameter. The lambda hyperparameter plays a major role in determining the level of regularization introduced in the model; the higher the lambda value is, the higher the regularization and vice-versa. 
+Moreover, LASSO regression is suitable for performing another form of feature selection as it introduces sparsity in our model and prioritizes fewer parameters. Ridge regression, on the other hand, is effective for dealing with multicollinearity (identified by VIF), when features are highly correlated, by shrinking the magnitude of the coefficients. According to the VIF calculated previously (greater than 1), our data has high multicollinearity, which can be potentially addressed using the ridge regression. 
 
+```{r ridge regression and lasso}
 set.seed(123)
-#we're implementing lasso/ridge with balanced data with no selection ie. rain_balanced_train
+
+#We're first implementing lasso/ridge with balanced data with no feature selection 
 
 X <- model.matrix(RainTomorrow~., data=rain_balanced)
 X <- X[,-1]
@@ -608,24 +638,19 @@ y <- rain_balanced$RainTomorrow
 y_train <- rain_balanced_train$RainTomorrow
 y_test <- rain_balanced_test$RainTomorrow
 
-
-
 # alpha=0 for ridge, alpha=1 (default) for lasso
-
 
 # Ridge Regression (L2)
 
 ridge_cv <- cv.glmnet(X_train, y_train, alpha=0, family = "binomial", type.measure = "class")
 plot(ridge_cv)
 
-# to select best lambda 
+# To select best lambda 
 lambda_opt_ridge <- ridge_cv$lambda.min
 lambda_opt_ridge
 
 pred_ridge<- predict(ridge_cv, X_test, type = "class", s = lambda_opt_ridge)
 table(y_test, pred_ridge)
-
-
 
 #Lasso Regression (L1)
 lasso_cv <- cv.glmnet(X_train, y_train, alpha=1, family = "binomial", type.measure = "class")
@@ -638,14 +663,14 @@ pred_lasso<- predict(lasso_cv, X_test, type = "class", s = lambda_opt_lasso)
 table(y_test, pred_lasso)
 
 
-#Implement Ridge and LASSO after feature selection
+#Then, we implemented Ridge and LASSO after feature selection
 
 # Ridge Regression (L2)
 
 ridge_cv_subset <- cv.glmnet(X_train_subset, y_train_subset, alpha=0, family = "binomial", type.measure = "class")
 plot(ridge_cv_subset)
 
-# to select best lambda 
+# To select best lambda 
 lambda_opt_ridge_subset <- ridge_cv_subset$lambda.min
 lambda_opt_ridge_subset
 
@@ -663,7 +688,13 @@ pred_lasso_subset<- predict(lasso_cv_subset, X_test_subset, type = "class", s = 
 table(y_test_subset, pred_lasso_subset)
 
 ```
-##Remove outliers from data 
+
+## Linear and Quadratic Discriminant Analysis
+Linear and Quadratic Discriminant Analysis, also known as LDA and QDA, fall into another class of statistical modeling techniques that can be used in supervised learning. 
+LDA projects high-dimensional data into a lower-dimensional space while still preserving the original classifications of the training set. The reducing technique separates the data linearly to deduce a linear combination of the features that best generalize the data. LDA is best suited for data with clear spatial separation of classes and assumes the equality of covariance matrices between the classes. 
+Meanwhile, QDA is an extension of LDA that can capture non-linear relationships across model features. Unlike LDA, QDA is still suitable when the classes have unique covariance matrices.In our project, we performed both LDA and QDA on our balanced and feature selected data. However, since LDA and QDA are sensitive to outliers, we performed outlier removal prior to running the models.
+
+###Remove outliers from data 
 ```{r Remove outliers}
 #looking for outliers in our data after balancing and feature selection 
 
@@ -672,7 +703,6 @@ geom_boxplot(outlier.colour = "red", outlier.shape = 16,
 outlier.size = 2)+
 theme(legend.position="none") +
 ylab("Min Temperature")
-#print(g1)
 chisq.out.test(rain_subset_train$MinTemp)  #p-value = 0.00151, remove 376
 which(rain_subset_train$MinTemp == 0) 
 
@@ -682,7 +712,6 @@ geom_boxplot(outlier.colour = "red", outlier.shape = 16,
 outlier.size = 2)+
 theme(legend.position="none") +
 ylab("Sunshine")
-#print(g2)
 chisq.out.test(rain_subset_train$Sunshine)  #p-value = 0.04431, index 6965 
 which(rain_subset_train$Sunshine == 1) 
 
@@ -697,8 +726,6 @@ chisq.out.test(rain_subset_train$WindGustSpeed) #p-value = 3.071e-07, no values
 which(rain_subset_train$WindGustSpeed == 0.939130434782609) 
 
 
-
-
 g4<- ggplot(data = rain_subset_train, aes(y = WindSpeed9am,fill = 2)) +
 geom_boxplot(outlier.colour = "red", outlier.shape = 16,
 outlier.size = 2)+
@@ -707,7 +734,6 @@ ylab("WindSpeed9am")
 #print(g4)
 chisq.out.test(rain_subset_train$WindSpeed9am)  #p-value = 1.43e-08 , no values
 which(rain_subset_train$WindSpeed9am == 0.969230769230769) 
-
 
 
 g5<- ggplot(data = rain_subset_train, aes(y = WindSpeed3pm,fill = 2)) +
@@ -720,7 +746,6 @@ chisq.out.test(rain_subset_train$WindSpeed3pm)  #p-value = 4.733e-07 , no values
 which(rain_subset_train$WindSpeed3pm == 0.851351351351351) 
 
 
-
 g6<- ggplot(data = rain_subset_train, aes(y = Humidity3pm,fill = 2)) +
 geom_boxplot(outlier.colour = "red", outlier.shape = 16,
 outlier.size = 2)+
@@ -729,7 +754,6 @@ ylab("Humidity3pm")
 #print(g6)
 chisq.out.test(rain_subset_train$Humidity3pm) #p-value = 0.009785, indices:3782 10189 10959 15362 16105 18240
 which(rain_subset_train$Humidity3pm ==0.01)
-
 
 
 g7<- ggplot(data = rain_subset_train, aes(y = Pressure9am,fill = 2)) +
@@ -742,7 +766,6 @@ chisq.out.test(rain_subset_train$Pressure9am) # p-value = 2.435e-06, index= 1935
 which(rain_subset_train$Pressure9am ==0.0283806343906518)
 
 
-
 g8<- ggplot(data = rain_subset_train, aes(y = Pressure3pm,fill = 2)) +
 geom_boxplot(outlier.colour = "red", outlier.shape = 16,
 outlier.size = 2)+
@@ -751,7 +774,6 @@ ylab("Pressure3pm")
 #print(g8)
 chisq.out.test(rain_subset_train$Pressure3pm)  # p-value = 2.756e-07, index=15369
 which(rain_subset_train$Pressure3pm ==0)
-
 
 
 g9<- ggplot(data = rain_subset_train, aes(y = Cloud9am,fill = 2)) +
@@ -764,7 +786,6 @@ chisq.out.test(rain_subset_train$Cloud9am)
 # which(rain_subset_train$Cloud9am ==0) # we got a p-value of 0.07 so we cannot refute the null hypothesis 
 
 
-
 g10<- ggplot(data = rain_subset_train, aes(y = Cloud3pm,fill = 2)) +
 geom_boxplot(outlier.colour = "red", outlier.shape = 16,
 outlier.size = 2)+
@@ -773,7 +794,6 @@ ylab("Cloud3pm")
 #print(g10)
 chisq.out.test(rain_subset_train$Cloud3pm) #p-value = 0.04988 
 #which(rain_subset_train$Cloud3pm ==0)
-
 
 
 g11<- ggplot(data = rain_subset_train, aes(y = Temp3pm,fill = 2)) +
@@ -791,10 +811,8 @@ grid.arrange(g1, g2, g3,g4,g5,g6,g7,g8,g9,g10,g11,  nrow = 3)
 #remove outliers for p_values less that 0.05
 rain_subset_train_NoOutliers <- rain_subset_train[-c(4596,10679,15369,1935,3782,10189,10959,15362,16105,18240,376,6965)]
 
-
-
 ```
-##LDA
+###LDA
 ```{r LDA}
 # Model definition starting from the previous glm_bal model:
 
@@ -844,6 +862,7 @@ grid.arrange(grobs = CM_all_lda, nrow = 3, width = plot_width)
 ldahist(pred_lda$x[,1], g = pred_lda$class, col = 2)
 ```
 
+###QDA
 ```{r QDA}
 qda<- qda(data = rain_subset_train_NoOutliers,RainTomorrow ~.,family = "binomial")
 qda
@@ -883,9 +902,11 @@ grid.arrange(grobs = CM_all_qda, nrow = 3, width = plot_width)
 
 ```
 
+## K-Nearest Neighbors 
+
+K-Nearest Neighbors (KNN) is a non-parametric, supervised learning technique, which assumes that features that are close in the feature space belong to the same class. The model identifies the labeled K-closest points to an observed point, and assigns the point to the majority class of the said-K-nearest neighbors. KNN is very sensitive to feature scaling and choice of K. If K is too small, KNN might lead to overfitting as each point is classified according to a small set of training examples. Choosing a K that is too large, however, may lead to less overfitting, but with the tradeoff of higher bias and too simple of a model.
 
 ```{r KNN}
-
 set.seed(2531)
 
 # We look now for the best value of the parameter 
@@ -917,10 +938,7 @@ tab
 ```
 
 ```{r plot error}
-
-accuracy <-function(x){sum(diag(x)/(sum(rowSums(x)))) * 100}
-accuracy(tab)
-
+#Plot test error against different levels of K
 ggplot(data.frame(knn_test_error), 
       aes(x = 1:kmax, y = knn_test_error)) +
       geom_line(colour="blue") +
