@@ -32,6 +32,9 @@ library(glmnet)
 library(outliers)
 library(class)
 library(kableExtra)
+library(tidyverse)
+library(pROC)
+library(dplyr)
 ```
 
 ## Download the Rain Dataset
@@ -44,7 +47,6 @@ summary(rain)
 dim(rain)
 ```
 
-##TODO: Create Feature Table of Contents
 ```{r load variable TOC}
 file_path2 <- "/Users/Sofia/Desktop/Rain_Australia/Feature_TOC2.csv"
 feature_toc <- read.csv(file_path2)
@@ -507,7 +509,7 @@ for (model in models) {
 metrics
 ```
 ##Visualizing data classifications from predictions
-In addition to comparing performance metrics across the three models, we also sought to visualize the separation of classes in scatter plots between two predictive features: Sunshine and Temp3pm. As seen for the majority of the features, we are unable to completely separate the classes in the scatterplots since the features are highly correlated. 
+In addition to comparing performance metrics across the three models, we also sought to visualize the separation of classes in scatter plots between two predictive features: Sunshine and Temp3pm. As seen for the majority of the features, we are unable to completely separate the classes in the scatterplots since the features are highly correlated. To pair with these scatter plots, we created logistic curves for each of our logistic regresison models that plot the predicted probability of the RainTomorrow classification of samples against the true classification. As expected, points with predicted probabilities closer to zero are being classified as 0 for RainTomorrow, whereas points with probabilities closer to one are being classified as 1. In comparing the three models, the Simple GLM appears to be more skewed to the right due to zero being the dominating class. While in the other two modified GLM models, undersampling reduced the number of samples of the 0 class to a point at which the classes had an equal number of samples. This likely led to less skewing of the logistic curve, but also a more even distribution of points around the middle of the plots, indicating less polarity in the classification. 
 
 ```{r Visualizing data classifications}
 
@@ -692,7 +694,7 @@ table(y_test_subset, pred_lasso_subset)
 ## Linear and Quadratic Discriminant Analysis
 Linear and Quadratic Discriminant Analysis, also known as LDA and QDA, fall into another class of statistical modeling techniques that can be used in supervised learning. 
 LDA projects high-dimensional data into a lower-dimensional space while still preserving the original classifications of the training set. The reducing technique separates the data linearly to deduce a linear combination of the features that best generalize the data. LDA is best suited for data with clear spatial separation of classes and assumes the equality of covariance matrices between the classes. 
-Meanwhile, QDA is an extension of LDA that can capture non-linear relationships across model features. Unlike LDA, QDA is still suitable when the classes have unique covariance matrices.In our project, we performed both LDA and QDA on our balanced and feature selected data. However, since LDA and QDA are sensitive to outliers, we performed outlier removal prior to running the models.
+Meanwhile, QDA is an extension of LDA that can capture non-linear relationships across model features. Unlike LDA, QDA is still suitable when the classes have unique covariance matrices. In our project, we performed both LDA and QDA on our balanced and feature selected data. However, since LDA and QDA are sensitive to outliers, we performed outlier removal prior to running the models.
 
 ###Remove outliers from data 
 ```{r Remove outliers}
@@ -855,14 +857,13 @@ plot_width <- c(4, 4, 4)
 grid.arrange(grobs = CM_all_lda, nrow = 3, width = plot_width)
 ```
 ```{r LDA histogram}
-# We use now the information given by:
-# - x: linear combination of the variables that better describe the examples
-# - class: assigned class
+# Here we plot stacked histograms representing the linear combination of variable that best represent the samples with their discriminant scores, split by each assigned class. The y-axis is the frequency of examples falling into each range of discriminant scores. From these plots, we observed little to no overlap across the two classes, which is an indicator of good separation between the two classes. 
 
 ldahist(pred_lda$x[,1], g = pred_lda$class, col = 2)
 ```
 
 ###QDA
+
 ```{r QDA}
 qda<- qda(data = rain_subset_train_NoOutliers,RainTomorrow ~.,family = "binomial")
 qda
@@ -875,6 +876,8 @@ pred_qda_04<- as.factor(ifelse(post_qda[,2] > threshold4, 1, 0))
 pred_qda_05<- as.factor(ifelse(post_qda[,2] > threshold5, 1, 0))
 pred_qda_06<- as.factor(ifelse(post_qda[,2] > threshold6, 1, 0))
 
+
+# Confusion matrices and performance metrics below indicate very little difference across the QDA models with the different thresholds. 
 
 # Confusion matrix with threshold = 0.4
 error_qda4 <- mean(pred_qda_04!=rain_subset_test$RainTomorrow)
@@ -933,8 +936,24 @@ knn<- knn(X_train_subset, X_test_subset,cl = y_train_subset, k = k_min)
 knn_pred_min <- knn
 
 # Confusion matrix for KNN on the test set
-tab<- table(y_test_subset, knn)
-tab
+cm_knn <- confusionMatrix(data =knn_pred_min , reference = rain_subset_test$RainTomorrow, mode ='everything')
+
+cm_table_knn <- as.data.frame(cm_knn$table)
+
+f1_score_knn <- cm_knn$byClass["F1"]
+error_knn <- mean(knn_pred_min!=rain_subset_test$RainTomorrow)
+accuracy_knn<- mean(knn_pred_min==rain_subset_test$RainTomorrow)
+
+ggplot(data = cm_table_knn, aes(x = Reference, y = Prediction, fill = Freq)) +
+    geom_tile(color = "white") +
+    geom_text(aes(label = Freq), color = "black", size = 8) +
+    scale_fill_gradient(low = "white", high = "steelblue") +
+    labs(title = paste("Confusion Matrix for KNN with F1-Score:", round(f1_score_knn, 3), "Error:", round(error_knn, 3) , "Accuracy:", round(accuracy_knn, 3)), x = "Target", y = "Prediction") +
+    theme_minimal() +
+    theme(axis.text = element_text(size = 8),
+          plot.title = element_text(size = 8, face = "bold"))
+
+
 ```
 
 ```{r plot error}
@@ -950,14 +969,118 @@ ggplot(data.frame(knn_test_error),
                     format((knn_test_error[k_min])*100, digits = 4), 
                     "%)"))
 ```
-#TODO: Analysis, Clean Visualizations and Code
-
-## Analysis
-```{r Analysis }
 
 
+## ROC Curves
+
+In this final section, we are going to compare all the models applied to balanced and subsetted data and generate a ROC curve to plot the False Positive rate (x-axis) against the True Positive rate (y-axis). This ultimately allows us to visualize the specificity, deduced from the false positives (1-false positive = specificity), and sensitivity from the true positives of each model and between models. We excluded KNN from this analysis, since we are unable to analyze thresholds for predicting classes since the model generates strict 0/1 classifications.
+
+```{r ROC }
+
+# Best Models:
+
+set.seed(125)
+
+# GLM Model
+best_glm_model <- glm_model
+
+best_glm_predict <- glm_predict
+
+# LDA Model
+best_lda_model <- lda(data = rain_subset_train, RainTomorrow ~.,family = "binomial")
+
+best_lda_predict <- predict(lda, rain_subset_test, type = "response")
+best_post_lda<- best_lda_predict$posterior
+
+# QDA Model
+best_qda_model <- qda(data = rain_subset_train,RainTomorrow ~.,family = "binomial")
+
+best_qda_predict <- predict(qda, rain_subset_test, type = "response")
+best_post_qda<- best_qda_predict$posterior
+
+# LASSO Model
+best_lasso_model <- lasso_cv_subset 
+
+best_lasso_predict <- pred_lasso_subset
+
+# Ridge Model
+best_ridge_model <- ridge_cv_subset 
+
+best_ridge_predict <- pred_ridge_subset
+
+prediction <- tibble(truth = as.factor(rain_subset_test$RainTomorrow))
+prediction <- prediction %>% mutate(pred = as.numeric(best_glm_predict))%>%mutate(model= "GLM")%>%
+  add_row(truth = as.factor(rain_subset_test$RainTomorrow), pred = as.numeric(best_post_lda[,2]),model= "LDA")%>%
+  add_row(truth = as.factor(rain_subset_test$RainTomorrow), pred = as.numeric(best_post_qda[,2]),model= "QDA")%>%
+  add_row(truth = as.factor(rain_subset_test$RainTomorrow), pred = as.numeric(best_ridge_predict),model= "Ridge")%>%
+  add_row(truth = as.factor(rain_subset_test$RainTomorrow), pred = as.numeric(best_lasso_predict),model= "Lasso")
+
+roc <- prediction %>% group_by(model) %>%
+  roc(truth, pred, levels=c(0,1)) %/%
+  plot(roc)
 
 
+roc.out <- roc(prediction$truth, prediction$pred, levels=c(0,1))
+plot(roc.out,  print.auc=TRUE, legacy.axes=TRUE, xlab="False positive rate", ylab="True positive rate")
 
+
+roc <- prediction %>% group_by(model) %>%
+  roc(truth, pred, levels=c(0,1)) %/%
+  plot(roc)
+
+roc_data <- prediction %>% 
+  group_by(model) %>%
+  roc(truth, pred, levels=c(0,1)) %%
+  plot(roc.out,  print.auc=TRUE, legacy.axes=TRUE, xlab="False positive rate", ylab="True positive rate")
+
+roc_data <- prediction %>%
+  group_by(model) %>%
+  do(data.frame(roc(.$truth, .$pred, event.levels = "second"), model = unique(.$model)))
+
+roc <- prediction %>% group_by(model) %>%
+  roc(truth, pred) %>%
+plot(roc)
+
+roc_curve(two_class_example, truth, Class1) %>%
+  ggplot(aes(x = 1 - specificity, y = sensitivity)) +
+  geom_path() +
+  geom_abline(lty = 3) +
+  coord_equal() +
+  theme_bw()
+
+roc_score = roc(truth, pred)
+
+roc <- prediction %>% group_by(model) %>%roc_curve(truth, pred, event_level = "second") %>%autoplot()roc54
+
+# Calculate ROC curves for each model
+roc_list <- lapply(split(prediction, prediction$model), function(df) {
+  roc.out <- roc(df$truth, df$pred, levels = c(0, 1))
+  roc.df <- data.frame(specificity = roc.out$specificities,
+                       sensitivity = roc.out$sensitivities)
+  return(roc.df)
+})
+
+model_colors <- rainbow(length(roc_list))
+model_names <- names(roc_list)
+
+model_names
+
+ggplot() +
+  lapply(seq_along(roc_list), function(i) {
+    geom_line(data = roc_list[[i]], 
+              aes(x = 1 - specificity, y = sensitivity),
+              color = model_colors[i], 
+              linetype = "solid", 
+              size = 1)
+  }) +
+  lapply(seq_along(roc_list), function(i) {
+      labs(title = "ROC Curves", x = "False Positive Rate", y = "True Positive Rate", names(roc_list[[i]]))   
+  }) +
+  scale_color_manual(values = model_colors) +
+  theme_minimal() +
+  theme(legend.position = "right")
 
 ```
+
+
+## Discussion 
