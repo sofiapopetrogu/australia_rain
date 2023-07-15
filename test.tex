@@ -3,7 +3,7 @@
 \PassOptionsToPackage{hyphens}{url}
 %
 \documentclass[
-  landscape]{article}
+]{article}
 \usepackage{amsmath,amssymb}
 \usepackage{lmodern}
 \usepackage{iftex}
@@ -91,20 +91,6 @@
 \providecommand{\tightlist}{%
   \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
 \setcounter{secnumdepth}{5}
-\usepackage{booktabs}
-\usepackage{longtable}
-\usepackage{array}
-\usepackage{multirow}
-\usepackage{wrapfig}
-\usepackage{float}
-\usepackage{colortbl}
-\usepackage{pdflscape}
-\usepackage{tabu}
-\usepackage{threeparttable}
-\usepackage{threeparttablex}
-\usepackage[normalem]{ulem}
-\usepackage{makecell}
-\usepackage{xcolor}
 \ifLuaTeX
   \usepackage{selnolig}  % disable illegal ligatures
 \fi
@@ -112,14 +98,13 @@
 \IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
 \urlstyle{same} % disable monospaced font for URLs
 \hypersetup{
-  pdftitle={markdown\_test},
-  pdfauthor={Sofia Trogu},
+  pdftitle={Will it Rain Tomorrow in Australia?},
   hidelinks,
   pdfcreator={LaTeX via pandoc}}
 
-\title{markdown\_test}
-\author{Sofia Trogu}
-\date{2023-07-07}
+\title{Will it Rain Tomorrow in Australia?}
+\author{}
+\date{\vspace{-2.5em}2023-07-15}
 
 \begin{document}
 \maketitle
@@ -128,105 +113,155 @@
 \setcounter{tocdepth}{2}
 \tableofcontents
 }
+\hypertarget{import-r-libraries}{%
+\section{Import R Libraries}\label{import-r-libraries}}
+
 \begin{Shaded}
 \begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(corrplot)}
+\FunctionTok{library}\NormalTok{(ggplot2)}
+\FunctionTok{library}\NormalTok{(caret)}
+\FunctionTok{library}\NormalTok{(magrittr)}
+\FunctionTok{library}\NormalTok{(gridExtra)  }
+\FunctionTok{library}\NormalTok{(scales)}
+\FunctionTok{library}\NormalTok{(DMwR2)}
+\FunctionTok{library}\NormalTok{(UBL)}
+\FunctionTok{library}\NormalTok{(caret)}
+\FunctionTok{library}\NormalTok{(MASS)}
+\FunctionTok{library}\NormalTok{(ipred)}
+\FunctionTok{library}\NormalTok{(rsample)}
+\FunctionTok{library}\NormalTok{(mlr)}
+\FunctionTok{library}\NormalTok{(knitr)}
+\FunctionTok{library}\NormalTok{(glmnet)}
+\FunctionTok{library}\NormalTok{(outliers)}
+\FunctionTok{library}\NormalTok{(class)}
 \FunctionTok{library}\NormalTok{(kableExtra)}
-
-\NormalTok{file\_path2 }\OtherTok{\textless{}{-}} \StringTok{"/Users/Sofia/Desktop/Rain\_Australia/Feature\_TOC.csv"}
-\NormalTok{feature\_toc }\OtherTok{\textless{}{-}} \FunctionTok{read.csv}\NormalTok{(file\_path2)}
-
-\NormalTok{feature\_toc }\SpecialCharTok{\%\textgreater{}\%}
-\NormalTok{  knitr}\SpecialCharTok{::}\FunctionTok{kable}\NormalTok{(}
-    \AttributeTok{format =} \StringTok{"latex"}\NormalTok{,}
-    \AttributeTok{align =} \StringTok{"l"}\NormalTok{,}
-    \AttributeTok{booktabs =} \ConstantTok{TRUE}\NormalTok{,}
-    \AttributeTok{longtable =} \ConstantTok{TRUE}\NormalTok{,}
-    \AttributeTok{linesep =} \StringTok{""}\NormalTok{,}
-    \AttributeTok{caption =} \StringTok{"Table of features with description and units."}
-\NormalTok{    ) }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{row\_spec}\NormalTok{(}\DecValTok{0}\NormalTok{,}\AttributeTok{bold=}\ConstantTok{TRUE}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%} 
-\NormalTok{  kableExtra}\SpecialCharTok{::}\FunctionTok{kable\_styling}\NormalTok{(}
-      \AttributeTok{position =} \StringTok{"left"}\NormalTok{,}
-      \AttributeTok{latex\_options =} \FunctionTok{c}\NormalTok{(}\StringTok{"striped"}\NormalTok{, }\StringTok{"repeat\_header"}\NormalTok{),}
-      \AttributeTok{stripe\_color =} \StringTok{"gray!15"}
-\NormalTok{    )}
+\FunctionTok{library}\NormalTok{(tidyverse)}
+\FunctionTok{library}\NormalTok{(pROC)}
+\FunctionTok{library}\NormalTok{(dplyr)}
 \end{Highlighting}
 \end{Shaded}
 
-\begin{longtable}[l]{lll}
-\caption{\label{tab:load variable TOC}Table of features with description and units.}\\
-\toprule
-\textbf{Heading} & \textbf{Meaning} & \textbf{Units}\\
-\midrule
-\endfirsthead
-\caption[]{Table of features with description and units. \textit{(continued)}}\\
-\toprule
-\textbf{Heading} & \textbf{Meaning} & \textbf{Units}\\
-\midrule
-\endhead
+\hypertarget{data-preparation}{%
+\section{Data Preparation}\label{data-preparation}}
 
-\endfoot
-\bottomrule
-\endlastfoot
-\cellcolor{gray!15}{Date} & \cellcolor{gray!15}{Day of Month} & \cellcolor{gray!15}{}\\
-Location & City in Austrailia & \\
-\cellcolor{gray!15}{MinTemp} & \cellcolor{gray!15}{Minimum temperature in the 24 hours to 9am Sometimes only known to the nearest whole degree} & \cellcolor{gray!15}{degrees Celsius}\\
-MaxTemp & Maximum temperaure in the 24 hours from 9am Sometimes only known to the nearest whole degree & degrees Celsius\\
-\cellcolor{gray!15}{Rainfall} & \cellcolor{gray!15}{Precipitation (rainfall) in the 24 hours to 9am Sometimes only known to the nearest whole millimetre} & \cellcolor{gray!15}{millimetres}\\
-Evaporation & Class A pan evaporation in the 24 hours to 9am & millimetres\\
-\cellcolor{gray!15}{Sunshine} & \cellcolor{gray!15}{Bright sunshine in the 24 hours to midnight} & \cellcolor{gray!15}{hours}\\
-WindGustDir & Direction of strongest gust in the 24 hours to midnight & 16 compass points\\
-\cellcolor{gray!15}{WindGustSpeed} & \cellcolor{gray!15}{Speed of strongest wind gust in the 24 hours to midnight} & \cellcolor{gray!15}{kilometres per hour}\\
-Temp9am & Temperature at 9am & degrees Celsius\\
-\cellcolor{gray!15}{Humidity9am} & \cellcolor{gray!15}{Relative humidity at 9am} & \cellcolor{gray!15}{percent}\\
-Cloud9am & Fraction of sky obscured by cloud at 9am & eighths\\
-\cellcolor{gray!15}{WindDir9am} & \cellcolor{gray!15}{Wind direction averaged over 10 minutes prior to 9am} & \cellcolor{gray!15}{16 compass points}\\
-WindSpeed9am & Wind speed averaged over 10 minutes prior to 9am & kilometres per hour\\
-\cellcolor{gray!15}{Pressure9am} & \cellcolor{gray!15}{Atmospheric pressure reduced to mean sea level at 9am} & \cellcolor{gray!15}{hectopascals}\\
-Temp3pm & Temperature at 3pm & degrees Celsius\\
-\cellcolor{gray!15}{Humidity3pm} & \cellcolor{gray!15}{Relative humidity at 3pm} & \cellcolor{gray!15}{percent}\\
-Cloud3pm & Fraction of sky obscured by cloud at 3pm & eighths\\
-\cellcolor{gray!15}{WindDir3pm} & \cellcolor{gray!15}{Wind direction averaged over 10 minutes prior to 3pm} & \cellcolor{gray!15}{16 compass points}\\
-WindSpeed3pm & Wind speed averaged over 10 minutes prior to 3pm & kilometres per hour\\
-\cellcolor{gray!15}{Pressure3pm} & \cellcolor{gray!15}{Atmospheric pressure reduced to mean sea level at 3pm} & \cellcolor{gray!15}{hectopascals}\\
-RainToday & Yes if the rain for today is 1mm or more, No if otherwise & 1 if Yes- 0 if No\\
-\cellcolor{gray!15}{RainTomorrow} & \cellcolor{gray!15}{Yes if the rain for tomorrow is 1mm or more, No if otherwise  (target variable to predict )} & \cellcolor{gray!15}{1 if Yes- 0 if No}\\*
-\end{longtable}
+\hypertarget{download-the-rain-dataset}{%
+\subsection{Download the Rain Dataset}\label{download-the-rain-dataset}}
 
-\hypertarget{r-markdown}{%
-\subsection{R Markdown}\label{r-markdown}}
-
-This is an R Markdown document. Markdown is a simple formatting syntax
-for authoring HTML, PDF, and MS Word documents. For more details on
-using R Markdown see \url{http://rmarkdown.rstudio.com}.
-
-When you click the \textbf{Knit} button a document will be generated
-that includes both content as well as the output of any embedded R code
-chunks within the document. You can embed an R code chunk like this:
+We downloaded the Rain Australia dataset as a CSV from the following
+link:
+\url{https://www.kaggle.com/datasets/jsphyg/weather-dataset-rattle-package/code?datasetId=6012\&searchQuery=visual}.
+The dataset is originally composed of 23 columns and 145,460 examples.
+The aim of the data is to use available information about today's
+weather, i.e. Temperature, Humidity, Pressure, to predict whether it
+will rain tomorrow. Therefore, we originally start with 22 features and
+1 target variable, RainTomorrow with binary classification (Yes=1,
+No=0).
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\FunctionTok{summary}\NormalTok{(cars)}
+\NormalTok{file\_path }\OtherTok{\textless{}{-}} \StringTok{"/Users/Sofia/Desktop/Rain\_Australia/weatherAUS.csv"}
+\NormalTok{rain }\OtherTok{\textless{}{-}} \FunctionTok{read.csv}\NormalTok{(file\_path)}
+\FunctionTok{head}\NormalTok{(rain)}
 \end{Highlighting}
 \end{Shaded}
 
 \begin{verbatim}
-##      speed           dist       
-##  Min.   : 4.0   Min.   :  2.00  
-##  1st Qu.:12.0   1st Qu.: 26.00  
-##  Median :15.0   Median : 36.00  
-##  Mean   :15.4   Mean   : 42.98  
-##  3rd Qu.:19.0   3rd Qu.: 56.00  
-##  Max.   :25.0   Max.   :120.00
+##         Date Location MinTemp MaxTemp Rainfall Evaporation Sunshine WindGustDir
+## 1 2008-12-01   Albury    13.4    22.9      0.6          NA       NA           W
+## 2 2008-12-02   Albury     7.4    25.1      0.0          NA       NA         WNW
+## 3 2008-12-03   Albury    12.9    25.7      0.0          NA       NA         WSW
+## 4 2008-12-04   Albury     9.2    28.0      0.0          NA       NA          NE
+## 5 2008-12-05   Albury    17.5    32.3      1.0          NA       NA           W
+## 6 2008-12-06   Albury    14.6    29.7      0.2          NA       NA         WNW
+##   WindGustSpeed WindDir9am WindDir3pm WindSpeed9am WindSpeed3pm Humidity9am
+## 1            44          W        WNW           20           24          71
+## 2            44        NNW        WSW            4           22          44
+## 3            46          W        WSW           19           26          38
+## 4            24         SE          E           11            9          45
+## 5            41        ENE         NW            7           20          82
+## 6            56          W          W           19           24          55
+##   Humidity3pm Pressure9am Pressure3pm Cloud9am Cloud3pm Temp9am Temp3pm
+## 1          22      1007.7      1007.1        8       NA    16.9    21.8
+## 2          25      1010.6      1007.8       NA       NA    17.2    24.3
+## 3          30      1007.6      1008.7       NA        2    21.0    23.2
+## 4          16      1017.6      1012.8       NA       NA    18.1    26.5
+## 5          33      1010.8      1006.0        7        8    17.8    29.7
+## 6          23      1009.2      1005.4       NA       NA    20.6    28.9
+##   RainToday RainTomorrow
+## 1        No           No
+## 2        No           No
+## 3        No           No
+## 4        No           No
+## 5        No           No
+## 6        No           No
 \end{verbatim}
 
-\hypertarget{including-plots}{%
-\subsection{Including Plots}\label{including-plots}}
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{summary}\NormalTok{(rain)}
+\end{Highlighting}
+\end{Shaded}
 
-You can also embed plots, for example:
+\begin{verbatim}
+##      Date             Location            MinTemp         MaxTemp     
+##  Length:145460      Length:145460      Min.   :-8.50   Min.   :-4.80  
+##  Class :character   Class :character   1st Qu.: 7.60   1st Qu.:17.90  
+##  Mode  :character   Mode  :character   Median :12.00   Median :22.60  
+##                                        Mean   :12.19   Mean   :23.22  
+##                                        3rd Qu.:16.90   3rd Qu.:28.20  
+##                                        Max.   :33.90   Max.   :48.10  
+##                                        NA's   :1485    NA's   :1261   
+##     Rainfall        Evaporation        Sunshine     WindGustDir       
+##  Min.   :  0.000   Min.   :  0.00   Min.   : 0.00   Length:145460     
+##  1st Qu.:  0.000   1st Qu.:  2.60   1st Qu.: 4.80   Class :character  
+##  Median :  0.000   Median :  4.80   Median : 8.40   Mode  :character  
+##  Mean   :  2.361   Mean   :  5.47   Mean   : 7.61                     
+##  3rd Qu.:  0.800   3rd Qu.:  7.40   3rd Qu.:10.60                     
+##  Max.   :371.000   Max.   :145.00   Max.   :14.50                     
+##  NA's   :3261      NA's   :62790    NA's   :69835                     
+##  WindGustSpeed     WindDir9am         WindDir3pm         WindSpeed9am   
+##  Min.   :  6.00   Length:145460      Length:145460      Min.   :  0.00  
+##  1st Qu.: 31.00   Class :character   Class :character   1st Qu.:  7.00  
+##  Median : 39.00   Mode  :character   Mode  :character   Median : 13.00  
+##  Mean   : 40.03                                         Mean   : 14.04  
+##  3rd Qu.: 48.00                                         3rd Qu.: 19.00  
+##  Max.   :135.00                                         Max.   :130.00  
+##  NA's   :10263                                          NA's   :1767    
+##   WindSpeed3pm    Humidity9am      Humidity3pm      Pressure9am    
+##  Min.   : 0.00   Min.   :  0.00   Min.   :  0.00   Min.   : 980.5  
+##  1st Qu.:13.00   1st Qu.: 57.00   1st Qu.: 37.00   1st Qu.:1012.9  
+##  Median :19.00   Median : 70.00   Median : 52.00   Median :1017.6  
+##  Mean   :18.66   Mean   : 68.88   Mean   : 51.54   Mean   :1017.6  
+##  3rd Qu.:24.00   3rd Qu.: 83.00   3rd Qu.: 66.00   3rd Qu.:1022.4  
+##  Max.   :87.00   Max.   :100.00   Max.   :100.00   Max.   :1041.0  
+##  NA's   :3062    NA's   :2654     NA's   :4507     NA's   :15065   
+##   Pressure3pm        Cloud9am        Cloud3pm        Temp9am     
+##  Min.   : 977.1   Min.   :0.00    Min.   :0.00    Min.   :-7.20  
+##  1st Qu.:1010.4   1st Qu.:1.00    1st Qu.:2.00    1st Qu.:12.30  
+##  Median :1015.2   Median :5.00    Median :5.00    Median :16.70  
+##  Mean   :1015.3   Mean   :4.45    Mean   :4.51    Mean   :16.99  
+##  3rd Qu.:1020.0   3rd Qu.:7.00    3rd Qu.:7.00    3rd Qu.:21.60  
+##  Max.   :1039.6   Max.   :9.00    Max.   :9.00    Max.   :40.20  
+##  NA's   :15028    NA's   :55888   NA's   :59358   NA's   :1767   
+##     Temp3pm       RainToday         RainTomorrow      
+##  Min.   :-5.40   Length:145460      Length:145460     
+##  1st Qu.:16.60   Class :character   Class :character  
+##  Median :21.10   Mode  :character   Mode  :character  
+##  Mean   :21.68                                        
+##  3rd Qu.:26.40                                        
+##  Max.   :46.70                                        
+##  NA's   :3609
+\end{verbatim}
 
-\includegraphics{test_files/figure-latex/pressure-1.pdf}
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{dim}\NormalTok{(rain)}
+\end{Highlighting}
+\end{Shaded}
 
-Note that the \texttt{echo\ =\ FALSE} parameter was added to the code
-chunk to prevent printing of the R code that generated the plot.
+\begin{verbatim}
+## [1] 145460     23
+\end{verbatim}
 
 \end{document}

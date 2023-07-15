@@ -1,7 +1,7 @@
----
-title: "markdown_test"
-author: "Sofia Trogu"
-date: "2023-07-07"
+
+title: "Will it Rain Tomorrow in Australia?"
+authors: Sofia Pope Trogu, Fairouz Baz Radwan, Auriane Mahfouz
+date: "2023-07-15"
 output:
   pdf_document: 
     toc: true
@@ -10,24 +10,91 @@ output:
     keep_tex: yes
     fig_caption: yes
 latex_engine: pdflatex
-classoption: landscape
+editor_options: 
+  markdown: 
+    wrap: sentence
 ---
 
+# Import R Libraries
 
-```{r load variable TOC}
+```{r import, eval = FALSE}
+library(corrplot)
+library(ggplot2)
+library(caret)
+library(magrittr)
+library(gridExtra)  
+library(scales)
+library(DMwR2)
+library(UBL)
+library(caret)
+library(MASS)
+library(ipred)
+library(rsample)
+library(mlr)
+library(knitr)
+library(glmnet)
+library(outliers)
+library(class)
 library(kableExtra)
+library(tidyverse)
+library(pROC)
+library(dplyr)
+```
 
-file_path2 <- "/Users/Sofia/Desktop/Rain_Australia/Feature_TOC.csv"
-feature_toc <- read.csv(file_path2)
+# Data Preparation 
 
-feature_toc %>%
+## Download the Rain Dataset
+
+We downloaded the Rain Australia dataset as a CSV from the following link: <https://www.kaggle.com/datasets/jsphyg/weather-dataset-rattle-package/code?datasetId=6012&searchQuery=visual>.
+The dataset is originally composed of 23 columns and 145,460 examples.
+The aim of the data is to use available information about today's weather, i.e.
+Temperature, Humidity, Pressure, to predict whether it will rain tomorrow.
+Therefore, we originally start with 22 features and 1 target variable, RainTomorrow with binary classification (Yes=1, No=0).
+
+```{r data loading}
+file_path <- "/Users/Sofia/Desktop/Rain_Australia/weatherAUS.csv"
+rain <- read.csv(file_path)
+head(rain)
+```
+
+```{r, eval=FALSE}
+summary(rain)
+dim(rain)
+```
+
+
+## Variable Table of Contents
+```{r load variable TOC}
+# file_path2 <- "/Users/Sofia/Desktop/Rain_Australia/Feature_TOC2.csv"
+# feature_toc <- read.csv(file_path2)
+# 
+# feature_toc %>%
+#   knitr::kable(
+#     format = "latex",
+#     align = "l",
+#     booktabs = TRUE,
+#     longtable = TRUE,
+#     linesep = "",
+#     caption = "Table of features with description and units."
+#     ) %>% row_spec(0,bold=TRUE) %>% 
+#   kableExtra::kable_styling(
+#       position = "left",
+#       latex_options = c("striped", "repeat_header"),
+#       stripe_color = "gray!15"
+#     )
+
+file_path3 <- "/Users/Sofia/Desktop/Rain_Australia/metrics_summary.csv"
+metrics_summary <- read.csv(file_path3)
+
+options(knitr.kable.NA = '')
+metrics_summary %>%
   knitr::kable(
     format = "latex",
     align = "l",
     booktabs = TRUE,
     longtable = TRUE,
     linesep = "",
-    caption = "Table of features with description and units."
+    caption = "Table of performance metrics by model."
     ) %>% row_spec(0,bold=TRUE) %>% 
   kableExtra::kable_styling(
       position = "left",
@@ -35,23 +102,3 @@ feature_toc %>%
       stripe_color = "gray!15"
     )
 ```
-
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
-```
-
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

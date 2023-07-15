@@ -1,0 +1,28 @@
+Model ,F1-Score,Error,Accuracy
+Simple GLM 0.4,0.903,0.153,0.847
+Simple GLM 0.5,0.907,0.149,0.851
+Simple GLM 0.6,0.907,0.153,0.847
+,,,
+GLM with Balanced Dataset-0.4,0.781,0.205,0.795
+GLM with Balanced Dataset-0.5,0.796,0.205,0.795
+GLM with Balanced Dataset-0.6,0.798,0.215,0.785
+,,,
+GLM with balancing and feature selection-0.4,0.781,0.206,0.794
+GLM with balancing and feature selection-0.5,0.795,0.205,0.795
+GLM with balancing and feature selection-0.6,0.797,0.216,0.784
+,,,
+LDA with balancing and feature seletion-0.4,0.783,0.207,0.793
+LDA with balancing and feature seletion-0.5,0.792,0.21,0.79
+LDA with balancing and feature seletion-0.6,0.795,0.22,0.78
+,,,
+QDA with balancing and feature seletion-0.4,0.776,0.217,0.783
+QDA with balancing and feature seletion-0.5,0.785,0.216,0.784
+QDA with balancing and feature seletion-0.6,0.788,0.22,0.78
+,,,
+Ridge Regression with balancing,0.786,0.213,0.787
+Ridge Regression with balancing and feature selection ,0.786,0.213,0.787
+,,,
+Lasso Regression with balancing ,0.796,0.205,0.795
+Lasso Regression with balancing and feature selection ,0.794,0.206,0.794
+,,,
+KNN,0.782,0.216,0.784

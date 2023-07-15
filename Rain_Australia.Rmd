@@ -1,7 +1,10 @@
 ---
 title: "Will it Rain Tomorrow in Australia?"
-authors: Sofia Pope Trogu, Fairouz Baz Radwan, Auriane Mahfouz
-date: "2023-07-15"
+author: 
+- Sofia Pope Trogu
+- Fairouz Baz Radwan
+- Auriane Mahfouz
+date: "17-07-2023"
 output:
   pdf_document: 
     toc: true
@@ -10,10 +13,13 @@ output:
     keep_tex: yes
     fig_caption: yes
 latex_engine: pdflatex
-classoption: landscape
+geometry: "left=3cm,right=3cm,top=2cm,bottom=2cm"
+editor_options: 
+  markdown: 
+    wrap: sentence
 ---
-## Import R Libraries
-```{r import}
+# Import R Libraries
+```{r import,warning=FALSE,message=FALSE}
 library(corrplot)
 library(ggplot2)
 library(caret)
@@ -35,10 +41,19 @@ library(kableExtra)
 library(tidyverse)
 library(pROC)
 library(dplyr)
+
 ```
 
+# Data Preparation 
+
 ## Download the Rain Dataset
-We downloaded the Rain Australia dataset as a CSV from the following link: https://www.kaggle.com/datasets/jsphyg/weather-dataset-rattle-package/code?datasetId=6012&searchQuery=visual. The dataset is originally composed of 23 columns and 145,460 examples. The aim of the data is to use available information about today's weather, i.e. Temperature, Humidity, Pressure, to predict whether it will rain tomorrow. Therefore, we originally start with 22 features and 1 target variable, RainTomorrow with binary classification (Yes=1, No=0). 
+
+We downloaded the Rain Australia dataset as a CSV from the following link: <https://www.kaggle.com/datasets/jsphyg/weather-dataset-rattle-package/code?datasetId=6012&searchQuery=visual>.
+The dataset is originally composed of 23 columns and 145,460 examples.
+The aim of the data is to use available information about today's weather, i.e.
+Temperature, Humidity, Pressure, to predict whether it will rain tomorrow.
+Therefore, we originally start with 22 features and 1 target variable, RainTomorrow with binary classification (Yes=1, No=0).
+
 ```{r data loading}
 file_path <- "/Users/Sofia/Desktop/Rain_Australia/weatherAUS.csv"
 rain <- read.csv(file_path)
@@ -47,7 +62,8 @@ summary(rain)
 dim(rain)
 ```
 
-```{r load variable TOC}
+## Variable Table of Contents
+```{r load variable TOC, echo = FALSE, fig.width = 6, fig.height = 4} 
 file_path2 <- "/Users/Sofia/Desktop/Rain_Australia/Feature_TOC2.csv"
 feature_toc <- read.csv(file_path2)
 
@@ -65,10 +81,18 @@ feature_toc %>%
       latex_options = c("striped", "repeat_header"),
       stripe_color = "gray!15"
     )
+
+
 ```
 
 ## Data Pre-processing
-Once we've loaded the dataset, we executed a series of pre-processing steps required prior to running our subsequent predictive models and data analysis. First, we found and removed any columns and rows that were completely empty. Next, we re-encoded the binary columns, RainToday and RainTomorrow to have numerical values: 1,0 instead of "Yes", "No", respectively. Then, we removed unneeded categorical variables, such as date, location, windgustdir, and winddir at 9 am and 3 pm. Finally, we reformated the dataframe to be all numeric values to be compatible with our further analysis methods. This process of data pre-processing led to a new dataset dimension of 56,420 × 18. 
+
+Once we've loaded the dataset, we executed a series of pre-processing steps required prior to running our subsequent predictive models and data analysis.
+First, we found and removed any columns and rows that were completely empty.
+Next, we re-encoded the binary columns, RainToday and RainTomorrow to have numerical values: 1,0 instead of "Yes", "No", respectively.
+Then, we removed unneeded categorical variables, such as date, location, windgustdir, and winddir at 9 am and 3 pm.
+Finally, we reformated the dataframe to be all numeric values to be compatible with our further analysis methods.
+This process of data pre-processing led to a new dataset dimension of 56,420 × 18.
 
 ```{r data preprocessing}
 # Find Empty Columns
@@ -82,37 +106,35 @@ rain <- na.omit(rain)
 
 # Set Yes/No values to 1, 0, respectively for RainToday and RainTomorrow
 rain$RainToday <- ifelse(rain$RainToday == "Yes", 1,
-                                     ifelse(rain$RainToday == "No", 0, rain$RainToday))
+                                     ifelse(rain$RainToday == "No", 0, 
+                                            rain$RainToday))
 
 #RainTomorrow is our Target variable                         
 rain$RainTomorrow <- ifelse(rain$RainTomorrow == "Yes", 1,
-                                     ifelse(rain$RainTomorrow == "No", 0, rain$RainToday))  
+                                     ifelse(rain$RainTomorrow == "No", 0, 
+                                            rain$RainToday))  
 
 #Remove date, location columns, and wind direction columns
-rain <- rain[, !(names(rain) %in% c('Date', 'Location', 'WindGustDir', 'WindDir9am', 'WindDir3pm'))]
+rain <- rain[, !(names(rain) %in% c('Date', 'Location', 'WindGustDir', 
+                                    'WindDir9am', 'WindDir3pm'))]
 
 # New dimension of rain: 56,420 × 18
 head(rain)
 
 rain <- as.data.frame(lapply(rain, as.numeric))
-summary(rain)
+
+
 ```
-## Correlation 
-After data pre-processing, we began to investigate the feature values and how each feature correlated with the other respective features. To perform this analysis, we built a correlation matrix that calculates the correlation values between each feature, so it results in a n_feature x n_feature matrix. From the correlation matrix, we visualized the correlations in both a heatmap and a numerical correlation plot.These plots provide a good context for the project and helped motivate our feature selection later on. 
+
+## Correlation
+
+After data pre-processing, we began to investigate the feature values and how each feature correlated with the other respective features.
+To perform this analysis, we built a correlation matrix that calculates the correlation values between each feature, so it results in a n_feature x n_feature matrix.
+From the correlation matrix, we visualized the correlations in both a heatmap and a numerical correlation plot.These plots provide a good context for the project and helped motivate our feature selection later on.
 
 ```{r correlation}
 # Build a Correlation Matrix
 cor_matrix <- cor(rain)
-
-# Create a heatmap from the correlation matrix with blue, white, and green color scheme
-heatmap(cor_matrix, col = colorRampPalette(c("blue", "white", "green"))(100))
-
-# Add a color legend to corr_matrix
-legend_colors <- c("blue", "white", "green")
-legend("right", legend = c(-1, 0, 1), fill = legend_colors, title = "Correlation")
-
-# Add a main title
-title(main = "Correlation Heatmap")
 
 #Plot correlation matrix with numerical values
 corrplot <- corrplot(cor(rain[,-19]),
@@ -123,21 +145,26 @@ corrplot <- corrplot(cor(rain[,-19]),
              tl.col = "black")
 ```
 
-
 ## Density Plots
-Based on the results of the correlation matrix, we further illustrated the features exhibiting the highest correlation using density and bar plots for the continuous and categorical variables, respectively against the target variable. From these plots, we identified the following trends: In the density plot with Sushine, we noted that the fraction of total days having higher sunshine are associated with more 0 RainTomorrow, and lower sunshine levels with more 1 RainTomorrow; Whereas, the Humidity3pm density plot appeared to have higher overlap between the two classes, but still higher humidity associated with 1 RainTomorrow and vice-versa. In the density plots with the two Cloud variables (9 am and 3 pm), we observed more oscillation across the x-axis with higher discrepancies in the target class at the two extremes. Finally, the representation of the RainToday binary variable against the target variable in a bar chart expresses the strong correlation between the classes of the two variables.We found a similar number of samples with both RainToday and RainTomorrow equal to 0 and vice-versa.   
 
-```{r density}
+Based on the results of the correlation matrix, we further illustrated the features exhibiting the highest correlation using density and bar plots for the continuous and categorical variables, respectively against the target variable.
+From these plots, we identified the following trends: In the density plot with Sushine, we noted that the fraction of total days having higher sunshine are associated with more 0 RainTomorrow, and lower sunshine levels with more 1 RainTomorrow; Whereas, the Humidity3pm density plot appeared to have higher overlap between the two classes, but still higher humidity associated with 1 RainTomorrow and vice-versa.
+In the density plots with the two Cloud variables (9 am and 3 pm), we observed more oscillation across the x-axis with higher discrepancies in the target class at the two extremes.
+Finally, the representation of the RainToday binary variable against the target variable in a bar chart expresses the strong correlation between the classes of the two variables.We found a similar number of samples with both RainToday and RainTomorrow equal to 0 and vice-versa.
+
+```{r density, fig.width = 10, fig.height = 10, fig.align = 'right'}
 ## Find features with highest correlation with target variable (RainTomorrow)
 
 correlations <- cor_matrix['RainTomorrow',]
-highly_correlated_columns <- correlations[abs(correlations) > 0.3 & correlations != 1] 
+highly_correlated_columns <- correlations[abs(correlations) > 0.3 & 
+                                            correlations != 1] 
 column_names <- names(highly_correlated_columns)
 print(column_names)
 
 rain_subset <- rain[,c(column_names)]
 
-# We are trying to visualize relationship between Target Variable, RainTomorrow with the features having the highest correlation
+# We are trying to visualize relationship between Target Variable, RainTomorrow 
+# with the features having the highest correlation
 
 # Calculate the count of each feature
 count_rain_today <- sum(rain$RainToday == 1)
@@ -149,7 +176,8 @@ count_no_rain_tomorrow <- sum(rain$RainTomorrow == 0)
 count_df <- data.frame(
   Feature = c("RainToday", "RainTomorrow", "RainToday","RainTomorrow"),
   Value = c("1", "1", "0", "0"),
-  Count = c(count_rain_today, count_rain_tomorrow, count_no_rain_today, count_no_rain_tomorrow)
+  Count = c(count_rain_today, count_rain_tomorrow, count_no_rain_today, 
+            count_no_rain_tomorrow)
 )
 
 plot_list <- list()
@@ -160,12 +188,14 @@ for (col in column_names) {
     bar_plot <- ggplot(count_df, aes(x = Value, y = Count, fill = Feature)) +
     geom_bar(stat = "identity", position = "dodge") +
     labs(x = "Feature", y = "Count", fill = "") +
-    scale_fill_manual(values = c("red", "blue"), labels = c("RainToday", "RainTomorrow")) +
+    scale_fill_manual(values = c("red", "blue"), labels = c("RainToday", 
+                                                            "RainTomorrow")) +
     theme_minimal()
     plot_list <- append(plot_list, list(bar_plot))
   }
   else {
-    density_plot <- rain%>% ggplot(aes(x = .data[[col]] , fill = factor(RainTomorrow))) +
+    density_plot <- rain%>% ggplot(aes(x = .data[[col]] , 
+                                       fill = factor(RainTomorrow))) +
     geom_density(alpha = 0.5) +
     labs(x = col, y = "Density", fill = "RainTomorrow") +
     ggtitle(paste("Density Plot of ", col, "by Raintomorrow")) +
@@ -179,14 +209,18 @@ for (col in column_names) {
 # Visualize density and bar plots
 grid.arrange(grobs = plot_list, nrow = 3, ncol = 2)
 
-
-
 ```
+
 ## Feature Scaling
-One additional pre-processing step that is vital to statistical learning methodologies is the application of feature scaling. Particularly when we are creating similarity measures, i.e. Euclidean distances, correlations, it is important to ensure your feature values fall within a similar range. There are different feature scaling techniques to standardize the range of feature values, but we chose min/max normalization. The min/max scaling takes each feature value, subtracts the minimum feature value and divides the result by the difference between the maximum and minimum values. In our project, we applied the min/max scaling to all the continuous variables, but kept the two binary variables, RainToday and RainTomorrow (our target) the same. 
+
+One additional pre-processing step that is vital to statistical learning methodologies is the application of feature scaling.
+Particularly when we are creating similarity measures, i.e.
+Euclidean distances, correlations, it is important to ensure your feature values fall within a similar range.
+There are different feature scaling techniques to standardize the range of feature values, but we chose min/max normalization.
+The min/max scaling takes each feature value, subtracts the minimum feature value and divides the result by the difference between the maximum and minimum values.
+In our project, we applied the min/max scaling to all the continuous variables, but kept the two binary variables, RainToday and RainTomorrow (our target) the same.
+
 ```{r feature scaling}
-
-
 # Feature Scaling: Scale feature values using min/max scaling
 min_max_norm <- function(x) {(x - min(x)) / (max(x) - min(x))}
 
@@ -196,19 +230,26 @@ rain_n <- as.data.frame(lapply(rain[,1:16], min_max_norm))
 rain_n$RainToday <- rain$RainToday
 rain_n$RainTomorrow <- rain$RainTomorrow
 ```
-###Regression Models 
-Our primary goal for this project was to build predictive models in order to implement a binary classification on our dataset. An intuitive approach to achieve that is the Logistic Regression model, which is a statistical modeling technique used to predict binary outcomes given a set of variables.
-In our report, we chose to implement several versions of this model, where we incorporated the pre-processing techniques discussed in this report. We first started by applying a logistic regression on the original dataset, split into a train and test sets, with neither balancing nor feature selection. We then implemented two other models, the first with balancing alone and the second with both balancing and feature selection. Furthermore, to clearly see how effective each model is, we ran predictions on the test set, plotted the confusion matrices, and visualized different performance metrics such as f1-score, accuracy and error. For each of these predictions, we tried out different threshold values (0.4,0.5,0.6) for the final classification. 
 
-##Train/Test split 
-Prior to feeding our data to our model, we implemented the train/test split which is a common machine learning technique which involves splitting the original dataset into two subsets: the training set and the test set. The training set is usually made up of the majority of the dataset and is used for training, where the model learns the best hyperparameters, without playing any part in the evaluation phase. On the other hand, the test set is exclusively used for testing our model's performance at predicting classes.
+# Regression Models 
+Our primary goal for this project was to build predictive models in order to implement a binary classification on our dataset.
+An intuitive approach to achieve that is the Logistic Regression model, which is a statistical modeling technique used to predict binary outcomes given a set of variables.
+In our report, we chose to implement several versions of this model, where we incorporated the pre-processing techniques discussed in this report.
+We first started by applying a logistic regression on the original dataset, split into a train and test sets, with neither balancing nor feature selection.
+We then implemented two other models, the first with balancing alone and the second with both balancing and feature selection.
+Furthermore, to clearly see how effective each model is, we ran predictions on the test set, plotted the confusion matrices, and visualized different performance metrics such as f1-score, accuracy and error.
+For each of these predictions, we tried out different threshold values (0.4,0.5,0.6) for the final classification.
 
-##First Logistic Regression Model: without balancing or feature selection
+## First Logistic Regression Model: without balancing or feature selection
+
+Prior to feeding our data to our model, we implemented the train/test split which is a common machine learning technique which involves splitting the original dataset into two subsets: the training set and the test set.
+The training set is usually made up of the majority of the dataset and is used for training, where the model learns the best hyperparameters, without playing any part in the evaluation phase.
+On the other hand, the test set is exclusively used for testing our model's performance at predicting classes.
+
 ```{r log. regression w/o balancing or feature selection}
 #Train/Test Split
 
-
-#Set Seed for Reproducibility 
+#Set Seed for Reproducibility
 set.seed(123)
 
 # Set Training Set Size to 75% of Total Dataset
@@ -218,25 +259,36 @@ train0 <- sample(1:nrow(rain_n), nrow(rain_n) * 0.75)
 test0 <- setdiff(1:nrow(rain_n), train0)
 
 # Split the target variable into train and test sets
-rain_n_train0 <- rain_n[train0,]
-rain_n_test0 <- rain_n[test0 ,]
+rain_n_train0 <- rain_n[train0, ]
+rain_n_test0 <- rain_n[test0 , ]
 
 # Run GLM Logistic Regression Model using Training Set
-glm_model0 <- glm(data = rain_n_train0, 
-        rain_n_train0$RainTomorrow ~ ., 
-        family = binomial)
+glm_model0 <- glm(data = rain_n_train0,
+                  rain_n_train0$RainTomorrow ~ .,
+                  family = binomial)
 
 # R squared and Variance Inflation Factor (VIF)
 
-#R-squared (Coefficient of Determination): R-squared is a statistical metric that measures the proportion of the variance in the dependent variable (target variable) that can be explained by the independent variables (predictor variables) in a regression model. It provides an indication of how well the regression model fits the observed data.
-# VIF: is a measure used to detect multicollinearity in a regression model. If the VIF value for a predictor variable is greater than 1, it indicates the presence of multicollinearity, suggesting that the predictor variable is highly correlated with other predictor variables in the model which makes it hard to assess the individual effects of each predictor on the dependent variable accurately. 
+#R-squared (Coefficient of Determination): R-squared is a statistical metric
+#that measures the proportion of the variance in the dependent variable
+#(target variable) that can be explained by the independent variables
+#(predictor variables) in a regression model. It provides an indication of how
+#well the regression model fits the observed data.
+
+# VIF: is a measure used to detect multicollinearity in a regression model.
+# If the VIF value for a predictor variable is greater than 1, it indicates the
+#presence of multicollinearity, suggesting that the predictor variable is
+# highly correlated with other predictor variables in the model which makes it
+#hard to assess the individual effects of each predictor on the dependent
+#variable accurately.
 
 
 model_summary0 <- summary(glm_model0)
 summary(glm_model0)
 
-r2_0 <- 1 - (model_summary0$deviance/model_summary0$null.deviance) # 0.3698141
-vif0 <- 1/(1-r2_0) # 1.586833
+r2_0 <-
+  1 - (model_summary0$deviance / model_summary0$null.deviance) # 0.3698141
+vif0 <- 1 / (1 - r2_0) # 1.586833
 
 #Predict test using glm model
 glm_predict0 <- predict(glm_model0, rain_n_test0, type = "response")
@@ -247,74 +299,122 @@ threshold4 <- 0.4
 threshold5 <- 0.5
 threshold6 <- 0.6
 
-glm_predict_4_0<- ifelse(glm_predict0 > threshold4, 1, 0)
-glm_predict_5_0<- ifelse(glm_predict0 > threshold5, 1, 0)
-glm_predict_6_0<- ifelse(glm_predict0 > threshold6, 1, 0)
+glm_predict_4_0 <- ifelse(glm_predict0 > threshold4, 1, 0)
+glm_predict_5_0 <- ifelse(glm_predict0 > threshold5, 1, 0)
+glm_predict_6_0 <- ifelse(glm_predict0 > threshold6, 1, 0)
 
 # Function to create a confusion matrix with F1 score, error and accuracy rate
-# A confusion matrix is a table that is often used to evaluate the performance of a classification model. It provides a summary of the predicted and actual values for a set of data points. The matrix allows us to assess how well the model is performing in terms of correctly and incorrectly classifying the data. The rows correspond to the predicted classes and the columns represent the actual targets.
+# A confusion matrix is a table that is often used to evaluate the performance
+# of a classification model. It provides a summary of the predicted and actual
+# values for a set of data points. The matrix allows us to assess how well the
+# model is performing in terms of correctly and incorrectly classifying the data.
+# The rows correspond to the predicted classes and the columns represent the
+# actual targets.
 
-create_confusion_matrix <- function(confusion_matrix, threshold, error, accuracy) {
-  # Extract the confusion matrix table
-  cm_table <- as.data.frame(confusion_matrix$table)
-  
-  #Extract F1 score
-  f1_score <- confusion_matrix$byClass["F1"]
-  
-  # Plot the confusion matrix using ggplot2
-  ggplot(data = cm_table, aes(x = Reference, y = Prediction, fill = Freq)) +
-    geom_tile(color = "white") +
-    geom_text(aes(label = Freq), color = "black", size = 8) +
-    scale_fill_gradient(low = "white", high = "steelblue") +
-    labs(title = paste("Confusion Matrix for Threshold = ", threshold, "with F1-Score:", round(f1_score, 3), "Error:", round(error, 3) , "Accuracy:", round(accuracy, 3)), x = "Target", y = "Prediction") +
-    theme_minimal() +
-    theme(axis.text = element_text(size = 8),
-          plot.title = element_text(size = 8, face = "bold"))
-
-}
+create_confusion_matrix <-
+  function(confusion_matrix,
+           threshold,
+           error,
+           accuracy) {
+    # Extract the confusion matrix table
+    cm_table <- as.data.frame(confusion_matrix$table)
+    
+    #Extract F1 score
+    f1_score <- confusion_matrix$byClass["F1"]
+    
+    # Plot the confusion matrix using ggplot2
+    ggplot(data = cm_table, aes(x = Reference, y = Prediction, fill = Freq)) +
+      geom_tile(color = "white") +
+      geom_text(aes(label = Freq), color = "black", size = 8) +
+      scale_fill_gradient(low = "white", high = "steelblue") +
+      labs(
+        title = paste(
+          "Confusion Matrix for Threshold = ",
+          threshold,
+          "with F1-Score:",
+          round(f1_score, 3),
+          "Error:",
+          round(error, 3) ,
+          "Accuracy:",
+          round(accuracy, 3)
+        ),
+        x = "Target",
+        y = "Prediction"
+      ) +
+      theme_minimal() +
+      theme(axis.text = element_text(size = 8),
+            plot.title = element_text(size = 8, face = "bold"))
+    
+  }
 
 # Confusion matrix with threshold = 0.4
-error4_0 <- mean(glm_predict_4_0!=rain_n_test0$RainTomorrow)
-accuracy4_0 <- mean(glm_predict_4_0==rain_n_test0$RainTomorrow)
-cm4_0 <- confusionMatrix(data = factor(glm_predict_4_0), reference = factor(rain_n_test0$RainTomorrow), mode ='everything')
+error4_0 <- mean(glm_predict_4_0 != rain_n_test0$RainTomorrow)
+accuracy4_0 <- mean(glm_predict_4_0 == rain_n_test0$RainTomorrow)
+cm4_0 <-
+  confusionMatrix(
+    data = factor(glm_predict_4_0),
+    reference = factor(rain_n_test0$RainTomorrow),
+    mode = 'everything'
+  )
 
 # Confusion matrix with threshold = 0.5
-error5_0 <- mean(glm_predict_5_0!=rain_n_test0$RainTomorrow)
-accuracy5_0 <- mean(glm_predict_5_0==rain_n_test0$RainTomorrow)
-cm5_0 <- confusionMatrix(data = factor(glm_predict_5_0), reference = factor(rain_n_test0$RainTomorrow), mode ='everything')
+error5_0 <- mean(glm_predict_5_0 != rain_n_test0$RainTomorrow)
+accuracy5_0 <- mean(glm_predict_5_0 == rain_n_test0$RainTomorrow)
+cm5_0 <-
+  confusionMatrix(
+    data = factor(glm_predict_5_0),
+    reference = factor(rain_n_test0$RainTomorrow),
+    mode = 'everything'
+  )
 
 # Confusion matrix with threshold = 0.6
-error6_0 <- mean(glm_predict_6_0!=rain_n_test0$RainTomorrow)
-accuracy6_0 <- mean(glm_predict_6_0==rain_n_test0$RainTomorrow)
-cm6_0 <- confusionMatrix(data = factor(glm_predict_6_0), reference = factor(rain_n_test0$RainTomorrow), mode ='everything')
+error6_0 <- mean(glm_predict_6_0 != rain_n_test0$RainTomorrow)
+accuracy6_0 <- mean(glm_predict_6_0 == rain_n_test0$RainTomorrow)
+cm6_0 <-
+  confusionMatrix(
+    data = factor(glm_predict_6_0),
+    reference = factor(rain_n_test0$RainTomorrow),
+    mode = 'everything'
+  )
 
 a0 <- create_confusion_matrix(cm4_0, 0.4, error4_0, accuracy4_0)
 b0 <- create_confusion_matrix(cm5_0, 0.5, error5_0, accuracy5_0)
 c0 <- create_confusion_matrix(cm6_0, 0.6, error6_0, accuracy6_0)
 
-# Threshold of 0.05 is the best among thresholds in terms of accuracy, sensitivity, and specificity
+# Threshold of 0.05 is the best among thresholds in terms of accuracy,
+#sensitivity, and specificity
 cm_all0 = list(a0, b0, c0)
-plot_width <- c(4, 4, 4) 
-grid.arrange(grobs = cm_all0, nrow = 3, width = plot_width)
+plot_width <- c(4, 4, 4)
+grid.arrange(grobs = cm_all0,
+             nrow = 3,
+             width = plot_width)
 
 ```
-## Balancing
-In addition to feature scaling, balancing our data is another technique used to prepare data before applying predictive modeling. Balancing reduces the effect of the dominating class which results in high bias and unreliable predictions. In order to balance data, there are several under-sampling and over-sampling methods that can be used depending on the characteristics of the dataset.
-As we will observe in the code below, our original data isn't balanced, in which 0 is the majority class with over 40,000 and 1 has only about 12,000 samples. To account for this imbalance, we performed a method of under-sampling, whereby we reduced the number of samples in the majority class (0) to the same number of samples of the minority class (1). This methodology may reduce the pool of data we have available, but it removes the bias in our model predictions toward one dominating class. We opted against using over-sampling as that might add unwanted noise to our data which might also lead to unreliable results.
+
+## Logistic Regression with Balancing
+
+In addition to feature scaling, balancing our data is another technique used to prepare data before applying predictive modeling.
+Balancing reduces the effect of the dominating class which results in high bias and unreliable predictions.
+In order to balance data, there are several under-sampling and over-sampling methods that can be used depending on the characteristics of the dataset.
+As we will observe in the code below, our original data isn't balanced, in which 0 is the majority class with over 40,000 and 1 has only about 12,000 samples.
+To account for this imbalance, we performed a method of under-sampling, whereby we reduced the number of samples in the majority class (0) to the same number of samples of the minority class (1).
+This methodology may reduce the pool of data we have available, but it removes the bias in our model predictions toward one dominating class.
+We opted against using over-sampling as that might add unwanted noise to our data which might also lead to unreliable results.
 
 ```{r balancing}
 
-
 # Check distribution of RainTomorrow values to see how balanced the data is
-# 0: 43993; 1: 12427 
+# 0: 43993; 1: 12427
 table(rain$RainTomorrow)
 
 
-#Downsamples majority class(0) 
-#Added yname to specify the target variable in downSample function, ow it assumes first col is target
-rain_balanced <- downSample(x = rain_n[, -which(names(rain_n) == "RainTomorrow")], 
-                            y = factor(rain_n$RainTomorrow), 
-                            yname = "RainTomorrow")
+#Downsamples majority class(0)
+#Added yname to specify the target variable in downSample function, ow it 
+#assumes first col is target
+rain_balanced <-
+  downSample(x = rain_n[,-which(names(rain_n) == "RainTomorrow")],
+             y = factor(rain_n$RainTomorrow),
+             yname = "RainTomorrow")
 table(rain_balanced$RainTomorrow)
 head(rain_balanced)
 
@@ -323,85 +423,157 @@ sum(is.na(rain_balanced$RainTomorrow))
 
 ```
 
-## Logistic Regression before Feature Selection
+
 ```{r log. regression pre feature selection}
 #Test/Train Split
 set.seed(123)
 
-train_balanced <- sample(1:nrow(rain_balanced), nrow(rain_balanced) * 0.75)
+train_balanced <-
+  sample(1:nrow(rain_balanced), nrow(rain_balanced) * 0.75)
 
 # Calculate the test indices
 test_balanced <- setdiff(1:nrow(rain_balanced), train_balanced)
 
 # Split the target variable into train and test sets
-rain_balanced_train <- rain_balanced[train_balanced,]
-rain_balanced_test <- rain_balanced[test_balanced ,]
-glm_model_balanced <- glm(data = rain_balanced_train, 
-        rain_balanced_train$RainTomorrow ~ ., 
-        family = binomial)
+rain_balanced_train <- rain_balanced[train_balanced, ]
+rain_balanced_test <- rain_balanced[test_balanced , ]
+glm_model_balanced <- glm(data = rain_balanced_train,
+                          rain_balanced_train$RainTomorrow ~ .,
+                          family = binomial)
 
 model_summary_balanced <- summary(glm_model_balanced)
 summary(glm_model_balanced)
-r2_balanced <- 1 - (model_summary_balanced$deviance/model_summary_balanced$null.deviance) # 0.3849359
-vif_balanced <- 1/(1-r2_balanced) # 1.625847
+r2_balanced <-
+  1 - (model_summary_balanced$deviance / model_summary_balanced$null.deviance) 
+# 0.3849359
+vif_balanced <- 1 / (1 - r2_balanced) # 1.625847
 
 #Predict test with model
-glm_predict_balanced <- predict(glm_model_balanced, rain_balanced_test, type = "response")
+glm_predict_balanced <-
+  predict(glm_model_balanced, rain_balanced_test, type = "response")
 
 #Convert predictions into 0,1 based on different thresholds
 
-glm_predict_4_balanced<- ifelse(glm_predict_balanced > threshold4, 1, 0)
-glm_predict_5_balanced<- ifelse(glm_predict_balanced > threshold5, 1, 0)
-glm_predict_6_balanced<- ifelse(glm_predict_balanced > threshold6, 1, 0)
+glm_predict_4_balanced <-
+  ifelse(glm_predict_balanced > threshold4, 1, 0)
+glm_predict_5_balanced <-
+  ifelse(glm_predict_balanced > threshold5, 1, 0)
+glm_predict_6_balanced <-
+  ifelse(glm_predict_balanced > threshold6, 1, 0)
 
 # Confusion matrix with threshold = 0.4
 table(rain_balanced_test$RainTomorrow, glm_predict_4_balanced)
-error4_balanced <- mean(glm_predict_4_balanced!=rain_balanced_test$RainTomorrow)
-accuracy4_balanced <- mean(glm_predict_4_balanced==rain_balanced_test$RainTomorrow)
-cm4_balanced <- confusionMatrix(data = factor(glm_predict_4_balanced), reference = factor(rain_balanced_test$RainTomorrow), mode ='everything')
+error4_balanced <-
+  mean(glm_predict_4_balanced != rain_balanced_test$RainTomorrow)
+accuracy4_balanced <-
+  mean(glm_predict_4_balanced == rain_balanced_test$RainTomorrow)
+cm4_balanced <-
+  confusionMatrix(
+    data = factor(glm_predict_4_balanced),
+    reference = factor(rain_balanced_test$RainTomorrow),
+    mode = 'everything'
+  )
 
 # Confusion matrix with threshold = 0.5
 table(rain_balanced_test$RainTomorrow, glm_predict_5_balanced)
-error5_balanced <- mean(glm_predict_5_balanced!=rain_balanced_test$RainTomorrow)
-accuracy5_balanced <- mean(glm_predict_5_balanced==rain_balanced_test$RainTomorrow)
-cm5_balanced <- confusionMatrix(data = factor(glm_predict_5_balanced), reference = factor(rain_balanced_test$RainTomorrow), mode ='everything')
+error5_balanced <-
+  mean(glm_predict_5_balanced != rain_balanced_test$RainTomorrow)
+accuracy5_balanced <-
+  mean(glm_predict_5_balanced == rain_balanced_test$RainTomorrow)
+cm5_balanced <-
+  confusionMatrix(
+    data = factor(glm_predict_5_balanced),
+    reference = factor(rain_balanced_test$RainTomorrow),
+    mode = 'everything'
+  )
 
 # Confusion matrix with threshold = 0.6
 table(rain_balanced_test$RainTomorrow, glm_predict_6_balanced)
-error6_balanced <- mean(glm_predict_6_balanced!=rain_balanced_test$RainTomorrow)
-accuracy6_balanced <- mean(glm_predict_6_balanced==rain_balanced_test$RainTomorrow)
-cm6_balanced <- confusionMatrix(data = factor(glm_predict_6_balanced), reference = factor(rain_balanced_test$RainTomorrow), mode ='everything')
+error6_balanced <-
+  mean(glm_predict_6_balanced != rain_balanced_test$RainTomorrow)
+accuracy6_balanced <-
+  mean(glm_predict_6_balanced == rain_balanced_test$RainTomorrow)
+cm6_balanced <-
+  confusionMatrix(
+    data = factor(glm_predict_6_balanced),
+    reference = factor(rain_balanced_test$RainTomorrow),
+    mode = 'everything'
+  )
 
-a_balanced <- create_confusion_matrix(cm4_balanced, 0.4, error4_balanced, accuracy4_balanced)
-b_balanced <- create_confusion_matrix(cm5_balanced, 0.5, error5_balanced, accuracy5_balanced)
-c_balanced <- create_confusion_matrix(cm6_balanced, 0.6, error6_balanced, accuracy6_balanced)
+a_balanced <-
+  create_confusion_matrix(cm4_balanced, 0.4, error4_balanced, accuracy4_balanced)
+b_balanced <-
+  create_confusion_matrix(cm5_balanced, 0.5, error5_balanced, accuracy5_balanced)
+c_balanced <-
+  create_confusion_matrix(cm6_balanced, 0.6, error6_balanced, accuracy6_balanced)
 
-# Threshold of 0.5 is the best among thresholds in terms of accuracy, sensitivity, and specificity
+# Threshold of 0.5 is the best among thresholds in terms of accuracy, 
+#sensitivity, and specificity
 cm_all_balanced = list(a_balanced, b_balanced, c_balanced)
-plot_width <- c(4, 4, 4) 
-grid.arrange(grobs = cm_all_balanced, nrow = 3, width = plot_width)
+plot_width <- c(4, 4, 4)
+grid.arrange(grobs = cm_all_balanced,
+             nrow = 3,
+             width = plot_width)
 
 ```
-##Feature Selection
-Feature selection is another key step in predictive model definition. The selection method involves evaluating all the features provided in the original dataset and selecting the most relevant features that best describe and predict our data. By identifying a smaller subset of important features, we are ensuring that the model doesn't overfit on the training data and is able to generalize on new data. Several techniques can be implemented to apply feature selection. Forward and backward selection iterate through all the features to determine each feature's effect on the overall model by cumulatively adding features from an empty set or removing features one at a time from the full set, respectively. Moreover, the two methods can be integrated to obtain a more exhaustive feature selection. Within the configuration of forward and backward selection using Akaike Information Criterion (AIC) or Bayesian Information Criterion (BIC), you can select the degree of penalization for the amount of features through the choice of k. The penalty term increases proportionally with the number of parameters set by k, which ensures that the complexity of the model is taken into account and to avoid overfitting. We chose to configure backward selection using BIC, which incorporates a log term and penalizes complex models more than AIC. 
 
-## Feature Selection (Backward Selection using BIC)
+## Logistic Regression with Feature Selection 
+Feature selection is another key step in predictive model definition.
+The selection method involves evaluating all the features provided in the original dataset and selecting the most relevant features that best describe and predict our data.
+By identifying a smaller subset of important features, we are ensuring that the model doesn't overfit on the training data and is able to generalize on new data.
+Several techniques can be implemented to apply feature selection.
+Forward and backward selection iterate through all the features to determine each feature's effect on the overall model by cumulatively adding features from an empty set or removing features one at a time from the full set, respectively.
+Moreover, the two methods can be integrated to obtain a more exhaustive feature selection.
+Within the configuration of forward and backward selection using Akaike Information Criterion (AIC) or Bayesian Information Criterion (BIC), you can select the degree of penalization for the amount of features through the choice of k.
+The penalty term increases proportionally with the number of parameters set by k, which ensures that the complexity of the model is taken into account and to avoid overfitting.
+We chose to configure backward selection using BIC, which incorporates a log term and penalizes complex models more than AIC.
+
+### Feature Selection (Backward Selection using BIC)
+
 ```{r feature selection}
 
 # Perform logistic regression with backward stepwise selection
-logit_model <- glm(rain_balanced$RainTomorrow ~ ., data = rain_balanced, family = binomial)  
+logit_model <-
+  glm(rain_balanced$RainTomorrow ~ .,
+      data = rain_balanced,
+      family = binomial)
 
 # Perform forward stepwise selection using BIC with log(n)
-logit_model <- stepAIC(logit_model, direction = "backward", k = log(nrow(rain_balanced)), trace = FALSE)
+logit_model <-
+  stepAIC(
+    logit_model,
+    direction = "backward",
+    k = log(nrow(rain_balanced)),
+    trace = FALSE
+  )
 
 # Print the summary of the logistic regression model
 summary(logit_model)
 
 # Subset the dataframe with the chosen features based on stepwise selection
-rain_subset <- rain_balanced[, c("MinTemp", "Sunshine", "WindGustSpeed", "WindSpeed9am", "WindSpeed3pm", "Humidity3pm", "Pressure9am", "Pressure3pm", "Cloud9am", "Cloud3pm", "Temp3pm", "RainToday", "RainTomorrow")]
+rain_subset <-
+  rain_balanced[, c(
+    "MinTemp",
+    "Sunshine",
+    "WindGustSpeed",
+    "WindSpeed9am",
+    "WindSpeed3pm",
+    "Humidity3pm",
+    "Pressure9am",
+    "Pressure3pm",
+    "Cloud9am",
+    "Cloud3pm",
+    "Temp3pm",
+    "RainToday",
+    "RainTomorrow"
+  )]
                             
 ```
-#Train/Test Split
+### Feature Selection Results and Train/Test Split
+
+In the summary of the feature selection model, we noticed that all the features chosen had a very significant p-value (***: p close to 0). Therefore, we decided to move forward with all the selected features we received from backward stepwise selection in subsequent areas of the project.
+
+
 ```{r train/test split}
 set.seed(123)
 
@@ -413,11 +585,10 @@ test <- setdiff(1:nrow(rain_subset), train)
 # Split the target variable into train and test sets
 rain_subset_train <- rain_subset[train,]
 rain_subset_test <- rain_subset[test,]
-
-head(rain_subset_train)
-head(rain_subset_test)
 ```
-## Selected Model
+
+### Logistic Regression using Selected Model
+
 ```{r selected model}
 # Model Definition
 glm_model <- glm(data = rain_subset_train, 
@@ -439,22 +610,25 @@ glm_predict_5<- ifelse(glm_predict > threshold5, 1, 0)
 glm_predict_6<- ifelse(glm_predict > threshold6, 1, 0)
 
 # Confusion matrix with threshold = 0.4
-table(rain_subset_test$RainTomorrow, glm_predict_4)
 error4 <- mean(glm_predict_4!=rain_subset_test$RainTomorrow)
 accuracy4 <- mean(glm_predict_4==rain_subset_test$RainTomorrow)
-cm4 <- confusionMatrix(data = factor(glm_predict_4), reference = factor(rain_subset_test$RainTomorrow), mode ='everything')
+cm4 <- confusionMatrix(data = factor(glm_predict_4), 
+                       reference = factor(rain_subset_test$RainTomorrow),
+                       mode ='everything')
 
 # Confusion matrix with threshold = 0.5
-table(rain_subset_test$RainTomorrow, glm_predict_5)
 error5 <- mean(glm_predict_5!=rain_subset_test$RainTomorrow)
 accuracy5 <- mean(glm_predict_5==rain_subset_test$RainTomorrow)
-cm5 <- confusionMatrix(data = factor(glm_predict_5), reference = factor(rain_subset_test$RainTomorrow), mode ='everything')
+cm5 <- confusionMatrix(data = factor(glm_predict_5), 
+                       reference = factor(rain_subset_test$RainTomorrow),
+                       mode ='everything')
 
 # Confusion matrix with threshold = 0.6
-table(rain_subset_test$RainTomorrow, glm_predict_6)
 error6 <- mean(glm_predict_6!=rain_subset_test$RainTomorrow)
 accuracy6 <- mean(glm_predict_6==rain_subset_test$RainTomorrow)
-cm6 <- confusionMatrix(data = factor(glm_predict_6), reference = factor(rain_subset_test$RainTomorrow), mode ='everything')
+cm6 <- confusionMatrix(data = factor(glm_predict_6), 
+                       reference = factor(rain_subset_test$RainTomorrow),
+                       mode ='everything')
 
 a <- create_confusion_matrix(cm4, 0.4, error4, accuracy4)
 b <- create_confusion_matrix(cm5, 0.5, error5, accuracy5)
@@ -465,19 +639,32 @@ plot_width <- c(4, 4, 4)
 grid.arrange(grobs = cm_all, nrow = 3, width = plot_width)
 
 ```
-##Comparison of 3 Models
-In the following plots, we compared each of the performance metrics previously computed across all the logistic regression models for each prediction threshold. By observing the results, we noticed close performance across all the models, with the simplest model before balancing and feature selection showing a slightly higher accuracy and F1 score, and lower error rate.
+
+## Comparison of 3 Models 
+In the following plots, we compared each of the performance metrics previously computed across all the logistic regression models for each prediction threshold.
+By observing the results, we noticed close performance across all the models, with the simplest model before balancing and feature selection showing a slightly higher accuracy and F1 score, and lower error rate.
 
 ```{r GLM Model Comparison}
 ## Summary Statistics: F1-Score, Error, Accuracy
 
-models <- c("Simple GLM", "GLM with Balancing", "GLM with Balancing and Feature Selection")
-model_suffix <- c( "_0", "_balanced", "")
+models <-
+  c("Simple GLM",
+    "GLM with Balancing",
+    "GLM with Balancing and Feature Selection")
+model_suffix <- c("_0", "_balanced", "")
 
 thresholds <- c(4, 5, 6)
 threshold_values <- c(0.4, 0.5, 0.6)
 
-metrics <- data.frame(Model = character(), Threshold = numeric(), F1_Score = numeric(), Error = numeric(), Accuracy = numeric(), stringsAsFactors = FALSE)
+metrics <-
+  data.frame(
+    Model = character(),
+    Threshold = numeric(),
+    F1_Score = numeric(),
+    Error = numeric(),
+    Accuracy = numeric(),
+    stringsAsFactors = FALSE
+  )
 
 j <-  1
 
@@ -487,7 +674,7 @@ for (model in models) {
   for (i in 1:length(thresholds)) {
     threshold <- thresholds[i]
     threshold_value <- threshold_values[i]
-
+    
     # Calculate the F1 score for each combination of model and threshold
     cm_name <- paste0("cm", threshold, model_suff)
     cm <- get(cm_name)
@@ -495,21 +682,38 @@ for (model in models) {
     
     error_name <- paste0("error", threshold, model_suff)
     error <- get(error_name)
-
+    
     accuracy_name <- paste0("accuracy", threshold, model_suff)
     accuracy <- get(accuracy_name)
     
     # Add the F1 score to the data frame
-    metrics <- rbind(metrics, data.frame(Model = model, Threshold = threshold_value, F1_Score = f1_score, Error = error, Accuracy = accuracy, stringsAsFactors = FALSE,row.names = NULL))
-    
+    metrics <-
+      rbind(
+        metrics,
+        data.frame(
+          Model = model,
+          Threshold = threshold_value,
+          F1_Score = f1_score,
+          Error = error,
+          Accuracy = accuracy,
+          stringsAsFactors = FALSE,
+          row.names = NULL
+        )
+      )
   }
-  
 }
 
-metrics
+knitr::kable(metrics)
 ```
-##Visualizing data classifications from predictions
-In addition to comparing performance metrics across the three models, we also sought to visualize the separation of classes in scatter plots between two predictive features: Sunshine and Temp3pm. As seen for the majority of the features, we are unable to completely separate the classes in the scatterplots since the features are highly correlated. To pair with these scatter plots, we created logistic curves for each of our logistic regresison models that plot the predicted probability of the RainTomorrow classification of samples against the true classification. As expected, points with predicted probabilities closer to zero are being classified as 0 for RainTomorrow, whereas points with probabilities closer to one are being classified as 1. In comparing the three models, the Simple GLM appears to be more skewed to the right due to zero being the dominating class. While in the other two modified GLM models, undersampling reduced the number of samples of the 0 class to a point at which the classes had an equal number of samples. This likely led to less skewing of the logistic curve, but also a more even distribution of points around the middle of the plots, indicating less polarity in the classification. 
+
+## Visualizing data classifications from predictions 
+In addition to comparing performance metrics across the three models, we also sought to visualize the separation of classes in scatter plots between two predictive features: Sunshine and Temp3pm.
+As seen for the majority of the features, we are unable to completely separate the classes in the scatterplots since the features are highly correlated.
+To pair with these scatter plots, we created logistic curves for each of our logistic regresison models that plot the predicted probability of the RainTomorrow classification of samples against the true classification.
+As expected, points with predicted probabilities closer to zero are being classified as 0 for RainTomorrow, whereas points with probabilities closer to one are being classified as 1.
+In comparing the three models, the Simple GLM appears to be more skewed to the right due to zero being the dominating class.
+While in the other two modified GLM models, undersampling reduced the number of samples of the 0 class to a point at which the classes had an equal number of samples.
+This likely led to less skewing of the logistic curve, but also a more even distribution of points around the middle of the plots, indicating less polarity in the classification.
 
 ```{r Visualizing data classifications}
 
@@ -570,39 +774,67 @@ grid.arrange(a0, a2, b2, c2, nrow = 2)
 
 ```
 
-```{r logistic regression plots}
-predicted_data<- data.frame(prob_of_rain = glm_predict0, RainTomorrow = rain_n_test0$RainTomorrow)
-predicted_data<- predicted_data[order(predicted_data$prob_of_rain, decreasing = FALSE),]
-predicted_data$rank<-  1:nrow(predicted_data)
+```{r logistic regression plots, fig.width = 10}
+predicted_data <-
+  data.frame(prob_of_rain = glm_predict0,
+             RainTomorrow = rain_n_test0$RainTomorrow)
+predicted_data <-
+  predicted_data[order(predicted_data$prob_of_rain, decreasing = FALSE), ]
+predicted_data$rank <-  1:nrow(predicted_data)
 
-a3<- ggplot(data = predicted_data, aes(x = rank, y = prob_of_rain)) +
-  geom_point(aes(color = as.factor(RainTomorrow)), alpha = 1, shape = 1, stroke = 1) +
+a3 <-
+  ggplot(data = predicted_data, aes(x = rank, y = prob_of_rain)) +
+  geom_point(
+    aes(color = as.factor(RainTomorrow)),
+    alpha = 1,
+    shape = 1,
+    stroke = 1
+  ) +
   xlab("Index") +
   ylab("Predicted probability") +
   ggtitle("Estimated Logistic Curve - Simple GLM") +
-  labs(color = "Rain Tomorrow") 
+  labs(color = "Rain Tomorrow")
 
-predicted_data<- data.frame(prob_of_rain = glm_predict_balanced, RainTomorrow = rain_balanced_test$RainTomorrow)
-predicted_data<- predicted_data[order(predicted_data$prob_of_rain, decreasing = FALSE),]
-predicted_data$rank<-  1:nrow(predicted_data)
+predicted_data <-
+  data.frame(prob_of_rain = glm_predict_balanced,
+             RainTomorrow = rain_balanced_test$RainTomorrow)
+predicted_data <-
+  predicted_data[order(predicted_data$prob_of_rain, decreasing = FALSE), ]
+predicted_data$rank <-  1:nrow(predicted_data)
 
-b3<- ggplot(data = predicted_data, aes(x = rank, y = prob_of_rain)) +
-  geom_point(aes(color = as.factor(RainTomorrow)), alpha = 1, shape = 1, stroke = 1) +
+b3 <-
+  ggplot(data = predicted_data, aes(x = rank, y = prob_of_rain)) +
+  geom_point(
+    aes(color = as.factor(RainTomorrow)),
+    alpha = 1,
+    shape = 1,
+    stroke = 1
+  ) +
   xlab("Index") +
   ylab("Predicted probability") +
   ggtitle("Estimated Logistic Curve - Simple GLM with Balancing") +
-  labs(color = "Rain Tomorrow") 
+  labs(color = "Rain Tomorrow")
 
-predicted_data<- data.frame(prob_of_rain = glm_predict, RainTomorrow = rain_balanced_test$RainTomorrow)
-predicted_data<- predicted_data[order(predicted_data$prob_of_rain, decreasing = FALSE),]
-predicted_data$rank<-  1:nrow(predicted_data)
+predicted_data <-
+  data.frame(prob_of_rain = glm_predict,
+             RainTomorrow = rain_balanced_test$RainTomorrow)
+predicted_data <-
+  predicted_data[order(predicted_data$prob_of_rain, decreasing = FALSE), ]
+predicted_data$rank <-  1:nrow(predicted_data)
 
-c3<- ggplot(data = predicted_data, aes(x = rank, y = prob_of_rain)) +
-  geom_point(aes(color = as.factor(RainTomorrow)), alpha = 1, shape = 1, stroke = 1) +
+c3 <-
+  ggplot(data = predicted_data, aes(x = rank, y = prob_of_rain)) +
+  geom_point(
+    aes(color = as.factor(RainTomorrow)),
+    alpha = 1,
+    shape = 1,
+    stroke = 1
+  ) +
   xlab("Index") +
   ylab("Predicted probability") +
-  ggtitle("Estimated Logistic Curve - Simple GLM with Balancing and Feature Selection") +
-  labs(color = "Rain Tomorrow") 
+  ggtitle("Estimated Logistic Curve - Simple GLM with Balancing and Feature 
+          Selection") +
+  labs(color = "Rain Tomorrow")
 
 grid.arrange(a3, b3, c3, nrow = 3)
 ```
@@ -616,24 +848,33 @@ X_test_subset <- X_test_subset[,-1]
 # Target vector
 y_train_subset <- rain_subset_train$RainTomorrow
 y_test_subset <- rain_subset_test$RainTomorrow
+
 ```
 
-## LASSO and Ridge Regression
-Beyond the standard logistic regression models, we chose to implement two alternative regularization models: LASSO and Ridge Regression. Both regularization techniques introduce a penalty team to the standard regression model; Least Absolute Shrinkage and Selection Operator (LASSO) regression utilizes the L1 norm, which is the sum of the absolute value of the parameters multiplied by a hyperparamter, lambda, whereas Ridge Regression uses the L2 norm, which is the square root of the sum of squared parameters multiplied by the lambda hyperparameter. The lambda hyperparameter plays a major role in determining the level of regularization introduced in the model; the higher the lambda value is, the higher the regularization and vice-versa. 
-Moreover, LASSO regression is suitable for performing another form of feature selection as it introduces sparsity in our model and prioritizes fewer parameters. Ridge regression, on the other hand, is effective for dealing with multicollinearity (identified by VIF), when features are highly correlated, by shrinking the magnitude of the coefficients. According to the VIF calculated previously (greater than 1), our data has high multicollinearity, which can be potentially addressed using the ridge regression. 
+# Regularized Regression Models
 
-```{r ridge regression and lasso}
+Beyond the standard logistic regression models, we chose to implement two alternative regularization models: LASSO and Ridge Regression.
+Both regularization techniques introduce a penalty team to the standard regression model; Least Absolute Shrinkage and Selection Operator (LASSO) regression utilizes the L1 norm, which is the sum of the absolute value of the parameters multiplied by a hyperparamter, lambda, whereas Ridge Regression uses the L2 norm, which is the square root of the sum of squared parameters multiplied by the lambda hyperparameter.
+The lambda hyperparameter plays a major role in determining the level of regularization introduced in the model; the higher the lambda value is, the higher the regularization and vice-versa.
+Moreover, LASSO regression is suitable for performing another form of feature selection as it introduces sparsity in our model and prioritizes fewer parameters.
+Ridge regression, on the other hand, is effective for dealing with multicollinearity (identified by VIF), when features are highly correlated, by shrinking the magnitude of the coefficients.
+According to the VIF calculated previously (greater than 1), our data has high multicollinearity, which can be potentially addressed using the ridge regression.
+
+
+## LASSO and Ridge Balanced w/o Feature Selection
+```{r}
 set.seed(123)
 
-#We're first implementing lasso/ridge with balanced data with no feature selection 
+#We're first implementing lasso/ridge with balanced data with no feature 
+#selection
 
-X <- model.matrix(RainTomorrow~., data=rain_balanced)
-X <- X[,-1]
+X <- model.matrix(RainTomorrow ~ ., data = rain_balanced)
+X <- X[, -1]
 
-X_train <- model.matrix(RainTomorrow~., data=rain_balanced_train)
-X_test <- model.matrix(RainTomorrow~., data=rain_balanced_test)
-X_train <- X_train[,-1]
-X_test <- X_test[,-1]
+X_train <- model.matrix(RainTomorrow ~ ., data = rain_balanced_train)
+X_test <- model.matrix(RainTomorrow ~ ., data = rain_balanced_test)
+X_train <- X_train[, -1]
+X_test <- X_test[, -1]
 
 # Target vector
 y <- rain_balanced$RainTomorrow
@@ -644,59 +885,135 @@ y_test <- rain_balanced_test$RainTomorrow
 
 # Ridge Regression (L2)
 
-ridge_cv <- cv.glmnet(X_train, y_train, alpha=0, family = "binomial", type.measure = "class")
+ridge_cv <-
+  cv.glmnet(
+    X_train,
+    y_train,
+    alpha = 0,
+    family = "binomial",
+    type.measure = "class"
+  )
 plot(ridge_cv)
 
-# To select best lambda 
+# To select best lambda
 lambda_opt_ridge <- ridge_cv$lambda.min
 lambda_opt_ridge
 
-pred_ridge<- predict(ridge_cv, X_test, type = "class", s = lambda_opt_ridge)
-table(y_test, pred_ridge)
+pred_ridge <-
+  predict(ridge_cv, X_test, type = "class", s = lambda_opt_ridge)
+error_ridge <- mean(pred_ridge != y_test) # 0.2133891
+accuracy_ridge <- mean(pred_ridge == y_test) # 0.7866109
+cm_ridge <-
+  confusionMatrix(
+    data = factor(pred_ridge),
+    reference = factor(y_test),
+    mode = 'everything'
+  ) # F1 : 0.7856
 
 #Lasso Regression (L1)
-lasso_cv <- cv.glmnet(X_train, y_train, alpha=1, family = "binomial", type.measure = "class")
+lasso_cv <-
+  cv.glmnet(
+    X_train,
+    y_train,
+    alpha = 1,
+    family = "binomial",
+    type.measure = "class"
+  )
 plot(lasso_cv)
 
 lambda_opt_lasso <- lasso_cv$lambda.min
 lambda_opt_lasso
 
-pred_lasso<- predict(lasso_cv, X_test, type = "class", s = lambda_opt_lasso)
-table(y_test, pred_lasso)
+pred_lasso <-
+  predict(lasso_cv, X_test, type = "class", s = lambda_opt_lasso)
+error_lasso <- mean(pred_lasso != y_test) # 0.2046991
+accuracy_lasso <- mean(pred_lasso == y_test) #  0.7953009
+cm_lasso <-
+  confusionMatrix(
+    data = factor(pred_lasso),
+    reference = factor(y_test),
+    mode = 'everything'
+  ) # F1 : 0.7956
+```
 
-
+## LASSO and Ridge Balanced w/ Feature Selection
+```{r}
 #Then, we implemented Ridge and LASSO after feature selection
 
 # Ridge Regression (L2)
 
-ridge_cv_subset <- cv.glmnet(X_train_subset, y_train_subset, alpha=0, family = "binomial", type.measure = "class")
+ridge_cv_subset <-
+  cv.glmnet(
+    X_train_subset,
+    y_train_subset,
+    alpha = 0,
+    family = "binomial",
+    type.measure = "class"
+  )
 plot(ridge_cv_subset)
 
-# To select best lambda 
+# To select best lambda
 lambda_opt_ridge_subset <- ridge_cv_subset$lambda.min
 lambda_opt_ridge_subset
 
-pred_ridge_subset<- predict(ridge_cv_subset, X_test_subset, type = "class", s = lambda_opt_ridge_subset)
-table(y_test_subset, pred_ridge_subset)
+pred_ridge_subset <-
+  predict(ridge_cv_subset, X_test_subset, type = "class", 
+          s = lambda_opt_ridge_subset)
+error_ridge_subset <-
+  mean(pred_ridge_subset != y_test_subset) # 0.2125845
+accuracy_ridge_subset <-
+  mean(pred_ridge_subset == y_test_subset) # 0.7874155
+cm_ridge_subset <-
+  confusionMatrix(
+    data = factor(pred_ridge_subset),
+    reference = factor(y_test),
+    mode = 'everything'
+  ) # F1 : 0.7864
 
 #Lasso Regression (L1)
-lasso_cv_subset <- cv.glmnet(X_train_subset, y_train_subset, alpha=1, family = "binomial", type.measure = "class")
+lasso_cv_subset <-
+  cv.glmnet(
+    X_train_subset,
+    y_train_subset,
+    alpha = 1,
+    family = "binomial",
+    type.measure = "class"
+  )
 plot(lasso_cv_subset)
 
 lambda_opt_lasso_subset <- lasso_cv_subset$lambda.min
 lambda_opt_lasso_subset
 
-pred_lasso_subset<- predict(lasso_cv_subset, X_test_subset, type = "class", s = lambda_opt_lasso_subset)
-table(y_test_subset, pred_lasso_subset)
+pred_lasso_subset <-
+  predict(lasso_cv_subset, X_test_subset, type = "class", 
+          s = lambda_opt_lasso_subset)
+error_lasso_subset <-
+  mean(pred_lasso_subset != y_test_subset) # 0.2059865
+accuracy_lasso_subset <-
+  mean(pred_lasso_subset == y_test_subset) # 0.7940135
+cm_lasso_subset <-
+  confusionMatrix(
+    data = factor(pred_lasso_subset),
+    reference = factor(y_test),
+    mode = 'everything'
+  ) # F1 : 0.7941
+
 
 ```
 
-## Linear and Quadratic Discriminant Analysis
-Linear and Quadratic Discriminant Analysis, also known as LDA and QDA, fall into another class of statistical modeling techniques that can be used in supervised learning. 
-LDA projects high-dimensional data into a lower-dimensional space while still preserving the original classifications of the training set. The reducing technique separates the data linearly to deduce a linear combination of the features that best generalize the data. LDA is best suited for data with clear spatial separation of classes and assumes the equality of covariance matrices between the classes. 
-Meanwhile, QDA is an extension of LDA that can capture non-linear relationships across model features. Unlike LDA, QDA is still suitable when the classes have unique covariance matrices. In our project, we performed both LDA and QDA on our balanced and feature selected data. However, since LDA and QDA are sensitive to outliers, we performed outlier removal prior to running the models.
+# Linear and Quadratic Discriminant Analysis
 
-###Remove outliers from data 
+Linear and Quadratic Discriminant Analysis, also known as LDA and QDA, fall into another class of statistical modeling techniques that can be used in supervised learning.
+LDA projects high-dimensional data into a lower-dimensional space while still preserving the original classifications of the training set.
+The reducing technique separates the data linearly to deduce a linear combination of the features that best generalize the data.
+LDA is best suited for data with clear spatial separation of classes and assumes the equality of covariance matrices between the classes.
+Meanwhile, QDA is an extension of LDA that can capture non-linear relationships across model features.
+Unlike LDA, QDA is still suitable when the classes have unique covariance matrices.
+In our project, we performed both LDA and QDA on our balanced and feature selected data.
+However, since LDA and QDA are sensitive to outliers, we performed outlier removal prior to running the models.
+
+## Remove outliers from data
+
 ```{r Remove outliers}
 #looking for outliers in our data after balancing and feature selection 
 
@@ -723,7 +1040,6 @@ geom_boxplot(outlier.colour = "red", outlier.shape = 16,
 outlier.size = 2)+
 theme(legend.position="none") +
 ylab("WindGustSpeed")
-#print(g3)
 chisq.out.test(rain_subset_train$WindGustSpeed) #p-value = 3.071e-07, no values 
 which(rain_subset_train$WindGustSpeed == 0.939130434782609) 
 
@@ -733,7 +1049,6 @@ geom_boxplot(outlier.colour = "red", outlier.shape = 16,
 outlier.size = 2)+
 theme(legend.position="none") +
 ylab("WindSpeed9am")
-#print(g4)
 chisq.out.test(rain_subset_train$WindSpeed9am)  #p-value = 1.43e-08 , no values
 which(rain_subset_train$WindSpeed9am == 0.969230769230769) 
 
@@ -743,7 +1058,6 @@ geom_boxplot(outlier.colour = "red", outlier.shape = 16,
 outlier.size = 2)+
 theme(legend.position="none") +
 ylab("WindSpeed3pm")
-#print(g5)
 chisq.out.test(rain_subset_train$WindSpeed3pm)  #p-value = 4.733e-07 , no values
 which(rain_subset_train$WindSpeed3pm == 0.851351351351351) 
 
@@ -753,8 +1067,8 @@ geom_boxplot(outlier.colour = "red", outlier.shape = 16,
 outlier.size = 2)+
 theme(legend.position="none") +
 ylab("Humidity3pm")
-#print(g6)
-chisq.out.test(rain_subset_train$Humidity3pm) #p-value = 0.009785, indices:3782 10189 10959 15362 16105 18240
+chisq.out.test(rain_subset_train$Humidity3pm) 
+#p-value = 0.009785, #indices:3782 10189 10959 15362 16105 18240
 which(rain_subset_train$Humidity3pm ==0.01)
 
 
@@ -763,7 +1077,6 @@ geom_boxplot(outlier.colour = "red", outlier.shape = 16,
 outlier.size = 2)+
 theme(legend.position="none") +
 ylab("Pressure9am")
-#print(g7)
 chisq.out.test(rain_subset_train$Pressure9am) # p-value = 2.435e-06, index= 1935
 which(rain_subset_train$Pressure9am ==0.0283806343906518)
 
@@ -773,7 +1086,6 @@ geom_boxplot(outlier.colour = "red", outlier.shape = 16,
 outlier.size = 2)+
 theme(legend.position="none") +
 ylab("Pressure3pm")
-#print(g8)
 chisq.out.test(rain_subset_train$Pressure3pm)  # p-value = 2.756e-07, index=15369
 which(rain_subset_train$Pressure3pm ==0)
 
@@ -783,9 +1095,8 @@ geom_boxplot(outlier.colour = "red", outlier.shape = 16,
 outlier.size = 2)+
 theme(legend.position="none") +
 ylab("Cloud9am")
-#print(g9)
 chisq.out.test(rain_subset_train$Cloud9am)
-# which(rain_subset_train$Cloud9am ==0) # we got a p-value of 0.07 so we cannot refute the null hypothesis 
+# we got a p-value of 0.07 so we cannot refute the null hypothesis 
 
 
 g10<- ggplot(data = rain_subset_train, aes(y = Cloud3pm,fill = 2)) +
@@ -793,9 +1104,8 @@ geom_boxplot(outlier.colour = "red", outlier.shape = 16,
 outlier.size = 2)+
 theme(legend.position="none") +
 ylab("Cloud3pm")
-#print(g10)
 chisq.out.test(rain_subset_train$Cloud3pm) #p-value = 0.04988 
-#which(rain_subset_train$Cloud3pm ==0)
+
 
 
 g11<- ggplot(data = rain_subset_train, aes(y = Temp3pm,fill = 2)) +
@@ -803,155 +1113,230 @@ geom_boxplot(outlier.colour = "red", outlier.shape = 16,
 outlier.size = 2)+
 theme(legend.position="none") +
 ylab("Temp3pm")
-#print(g11)
-chisq.out.test(rain_subset_train$Temp3pm)#p-value = 0.0003997, indices= 4596, 10679
+chisq.out.test(rain_subset_train$Temp3pm)
+#p-value = 0.0003997, indices= 4596, 10679
 which(rain_subset_train$Temp3pm ==1)
-
 
 grid.arrange(g1, g2, g3,g4,g5,g6,g7,g8,g9,g10,g11,  nrow = 3)
 
 #remove outliers for p_values less that 0.05
-rain_subset_train_NoOutliers <- rain_subset_train[-c(4596,10679,15369,1935,3782,10189,10959,15362,16105,18240,376,6965)]
+rain_subset_train_NoOutliers <- rain_subset_train[-c(4596,10679,15369,1935,3782,
+                                                     10189,10959,15362,16105,
+                                                     18240,376,6965)]
 
 ```
-###LDA
+
+## Linear Discriminant Analysis (LDA)
+
 ```{r LDA}
 # Model definition starting from the previous glm_bal model:
 
-lda<- lda(data = rain_subset_train_NoOutliers,RainTomorrow ~.,family = "binomial")
+lda <-
+  lda(data = rain_subset_train_NoOutliers, RainTomorrow ~ ., family = "binomial")
 lda
 
-pred_lda<- predict(lda, rain_subset_test, type = "response")
+pred_lda <- predict(lda, rain_subset_test, type = "response")
 
-post_lda<- pred_lda$posterior
+post_lda <- pred_lda$posterior
 
-pred_lda_04<- as.factor(ifelse(post_lda[,2] > threshold4, 1, 0))
-pred_lda_05<- as.factor(ifelse(post_lda[,2] > threshold5, 1, 0))
-pred_lda_06<- as.factor(ifelse(post_lda[,2] > threshold6, 1, 0))
+pred_lda_04 <- as.factor(ifelse(post_lda[, 2] > threshold4, 1, 0))
+pred_lda_05 <- as.factor(ifelse(post_lda[, 2] > threshold5, 1, 0))
+pred_lda_06 <- as.factor(ifelse(post_lda[, 2] > threshold6, 1, 0))
 
 
 # Confusion matrix with threshold = 0.4
-error_lda4 <- mean(pred_lda_04!=rain_subset_test$RainTomorrow)
-accuracy_lda4 <- mean(pred_lda_04==rain_subset_test$RainTomorrow)
-lda_CM04 <- confusionMatrix(data = factor(pred_lda_04), reference = factor(rain_subset_test$RainTomorrow), mode ='everything')
+error_lda4 <- mean(pred_lda_04 != rain_subset_test$RainTomorrow)
+accuracy_lda4 <- mean(pred_lda_04 == rain_subset_test$RainTomorrow)
+lda_CM04 <-
+  confusionMatrix(
+    data = factor(pred_lda_04),
+    reference = factor(rain_subset_test$RainTomorrow),
+    mode = 'everything'
+  )
 
 # Confusion matrix with threshold = 0.5
-error_lda5 <- mean(pred_lda_05!=rain_subset_test$RainTomorrow)
-accuracy_lda5 <- mean(pred_lda_05==rain_subset_test$RainTomorrow)
-lda_CM05 <- confusionMatrix(data = factor(pred_lda_05), reference = factor(rain_subset_test$RainTomorrow), mode ='everything')
+error_lda5 <- mean(pred_lda_05 != rain_subset_test$RainTomorrow)
+accuracy_lda5 <- mean(pred_lda_05 == rain_subset_test$RainTomorrow)
+lda_CM05 <-
+  confusionMatrix(
+    data = factor(pred_lda_05),
+    reference = factor(rain_subset_test$RainTomorrow),
+    mode = 'everything'
+  )
 
 # Confusion matrix with threshold = 0.6
-error_lda6 <- mean(pred_lda_06!=rain_subset_test$RainTomorrow)
-accuracy_lda6 <- mean(pred_lda_06==rain_subset_test$RainTomorrow)
-lda_CM06 <- confusionMatrix(data = factor(pred_lda_06), reference = factor(rain_subset_test$RainTomorrow), mode ='everything')
+error_lda6 <- mean(pred_lda_06 != rain_subset_test$RainTomorrow)
+accuracy_lda6 <- mean(pred_lda_06 == rain_subset_test$RainTomorrow)
+lda_CM06 <-
+  confusionMatrix(
+    data = factor(pred_lda_06),
+    reference = factor(rain_subset_test$RainTomorrow),
+    mode = 'everything'
+  )
 
 
 
-A <- create_confusion_matrix(lda_CM04, 0.4, error_lda4, accuracy_lda4)
-B <- create_confusion_matrix(lda_CM05, 0.5, error_lda5, accuracy_lda5)
-C <- create_confusion_matrix(lda_CM06, 0.6, error_lda6, accuracy_lda6)
+A <-
+  create_confusion_matrix(lda_CM04, 0.4, error_lda4, accuracy_lda4)
+B <-
+  create_confusion_matrix(lda_CM05, 0.5, error_lda5, accuracy_lda5)
+C <-
+  create_confusion_matrix(lda_CM06, 0.6, error_lda6, accuracy_lda6)
 
-# Threshold of 0.6 is the best among thresholds in terms of accuracy, sensitivity, and specificity
-CM_all_lda = list(A,B,C)
+# Threshold of 0.6 is the best among thresholds in terms of accuracy, 
+#sensitivity, and specificity
+CM_all_lda = list(A, B, C)
 plot_width <- c(4, 4, 4)
-grid.arrange(grobs = CM_all_lda, nrow = 3, width = plot_width)
+grid.arrange(grobs = CM_all_lda,
+             nrow = 3,
+             width = plot_width)
 ```
+
 ```{r LDA histogram}
-# Here we plot stacked histograms representing the linear combination of variable that best represent the samples with their discriminant scores, split by each assigned class. The y-axis is the frequency of examples falling into each range of discriminant scores. From these plots, we observed little to no overlap across the two classes, which is an indicator of good separation between the two classes. 
+# Here we plot stacked histograms representing the linear combination of 
+# variable that best represent the samples with their discriminant scores, split
+#by each assigned class. The y-axis is the frequency of examples falling into 
+# each range of discriminant scores. From these plots, we observed little to no
+# overlap across the two classes, which is an indicator of good separation 
+# between the two classes.
 
-ldahist(pred_lda$x[,1], g = pred_lda$class, col = 2)
+ldahist(pred_lda$x[, 1], g = pred_lda$class, col = 2)
 ```
 
-###QDA
+## Quadratic Discriminant Analysis (QDA)
 
 ```{r QDA}
-qda<- qda(data = rain_subset_train_NoOutliers,RainTomorrow ~.,family = "binomial")
+qda <-
+  qda(data = rain_subset_train_NoOutliers, RainTomorrow ~ ., family = "binomial")
 qda
 
-pred_qda<- predict(qda, rain_subset_test, type = "response")
+pred_qda <- predict(qda, rain_subset_test, type = "response")
 
-post_qda<- pred_qda$posterior
- 
-pred_qda_04<- as.factor(ifelse(post_qda[,2] > threshold4, 1, 0))
-pred_qda_05<- as.factor(ifelse(post_qda[,2] > threshold5, 1, 0))
-pred_qda_06<- as.factor(ifelse(post_qda[,2] > threshold6, 1, 0))
+post_qda <- pred_qda$posterior
+
+pred_qda_04 <- as.factor(ifelse(post_qda[, 2] > threshold4, 1, 0))
+pred_qda_05 <- as.factor(ifelse(post_qda[, 2] > threshold5, 1, 0))
+pred_qda_06 <- as.factor(ifelse(post_qda[, 2] > threshold6, 1, 0))
 
 
-# Confusion matrices and performance metrics below indicate very little difference across the QDA models with the different thresholds. 
+# Confusion matrices and performance metrics below indicate very little 
+#difference across the QDA models with the different thresholds.
 
 # Confusion matrix with threshold = 0.4
-error_qda4 <- mean(pred_qda_04!=rain_subset_test$RainTomorrow)
-accuracy_qda4 <- mean(pred_qda_04==rain_subset_test$RainTomorrow)
-qda_CM04 <- confusionMatrix(data = factor(pred_qda_04), reference = factor(rain_subset_test$RainTomorrow), mode ='everything')
+error_qda4 <- mean(pred_qda_04 != rain_subset_test$RainTomorrow)
+accuracy_qda4 <- mean(pred_qda_04 == rain_subset_test$RainTomorrow)
+qda_CM04 <-
+  confusionMatrix(
+    data = factor(pred_qda_04),
+    reference = factor(rain_subset_test$RainTomorrow),
+    mode = 'everything'
+  )
 
 # Confusion matrix with threshold = 0.5
-error_qda5 <- mean(pred_qda_05!=rain_subset_test$RainTomorrow)
-accuracy_qda5 <- mean(pred_qda_05==rain_subset_test$RainTomorrow)
-qda_CM05 <- confusionMatrix(data = factor(pred_qda_05), reference = factor(rain_subset_test$RainTomorrow), mode ='everything')
+error_qda5 <- mean(pred_qda_05 != rain_subset_test$RainTomorrow)
+accuracy_qda5 <- mean(pred_qda_05 == rain_subset_test$RainTomorrow)
+qda_CM05 <-
+  confusionMatrix(
+    data = factor(pred_qda_05),
+    reference = factor(rain_subset_test$RainTomorrow),
+    mode = 'everything'
+  )
 
 # Confusion matrix with threshold = 0.6
-error_qda6 <- mean(pred_qda_06!=rain_subset_test$RainTomorrow)
-accuracy_qda6 <- mean(pred_qda_06==rain_subset_test$RainTomorrow)
-qda_CM06 <- confusionMatrix(data = factor(pred_qda_06), reference = factor(rain_subset_test$RainTomorrow), mode ='everything')
+error_qda6 <- mean(pred_qda_06 != rain_subset_test$RainTomorrow)
+accuracy_qda6 <- mean(pred_qda_06 == rain_subset_test$RainTomorrow)
+qda_CM06 <-
+  confusionMatrix(
+    data = factor(pred_qda_06),
+    reference = factor(rain_subset_test$RainTomorrow),
+    mode = 'everything'
+  )
 
-A <- create_confusion_matrix(qda_CM04, 0.4, error_qda4, accuracy_qda4)
-B <- create_confusion_matrix(qda_CM05, 0.5, error_qda5, accuracy_qda5)
-C <- create_confusion_matrix(qda_CM06, 0.6, error_qda6, accuracy_qda6)
+A <-
+  create_confusion_matrix(qda_CM04, 0.4, error_qda4, accuracy_qda4)
+B <-
+  create_confusion_matrix(qda_CM05, 0.5, error_qda5, accuracy_qda5)
+C <-
+  create_confusion_matrix(qda_CM06, 0.6, error_qda6, accuracy_qda6)
 
-# Threshold of 0.05 is the best among thresholds in terms of accuracy, sensitivity, and specificity
-CM_all_qda = list(A,B,C)
-plot_width <- c(4, 4, 4) 
-grid.arrange(grobs = CM_all_qda, nrow = 3, width = plot_width)
+# Threshold of 0.05 is the best among thresholds in terms of accuracy, 
+# sensitivity, and specificity
+CM_all_qda = list(A, B, C)
+plot_width <- c(4, 4, 4)
+grid.arrange(grobs = CM_all_qda,
+             nrow = 3,
+             width = plot_width)
 
 ```
 
-## K-Nearest Neighbors 
+# K-Nearest Neighbors (kNN)
 
-K-Nearest Neighbors (KNN) is a non-parametric, supervised learning technique, which assumes that features that are close in the feature space belong to the same class. The model identifies the labeled K-closest points to an observed point, and assigns the point to the majority class of the said-K-nearest neighbors. KNN is very sensitive to feature scaling and choice of K. If K is too small, KNN might lead to overfitting as each point is classified according to a small set of training examples. Choosing a K that is too large, however, may lead to less overfitting, but with the tradeoff of higher bias and too simple of a model.
+K-Nearest Neighbors (KNN) is a non-parametric, supervised learning technique, which assumes that features that are close in the feature space belong to the same class.
+The model identifies the labeled K-closest points to an observed point, and assigns the point to the majority class of the said-K-nearest neighbors.
+KNN is very sensitive to feature scaling and choice of K.
+If K is too small, KNN might lead to overfitting as each point is classified according to a small set of training examples.
+Choosing a K that is too large, however, may lead to less overfitting, but with the tradeoff of higher bias and too simple of a model.
 
 ```{r KNN}
+
 set.seed(2531)
 
-# We look now for the best value of the parameter 
+# We look now for the best value of the parameter
 kmax <- 100
 knn_test_error <- numeric(kmax)
 
 # For each possible value of k we consider the obtained accuracy of the model
-for(k in 1:kmax) 
-  {
-  knn_pred <- as.factor(knn(X_train_subset,X_test_subset,cl = y_train_subset, k = k))
+for (k in 1:kmax)
+{
+  knn_pred <-
+    as.factor(knn(X_train_subset, X_test_subset, cl = y_train_subset, k = k))
   
   cm <- confusionMatrix(data = knn_pred, reference = y_test_subset)
-
+  
   knn_test_error[k] <- 1 - cm$overall[1]
-  }
+}
 
 # We took the minimum value of the error
 k_min <- which.min(knn_test_error)
 k_min
 
 # We compute now the prediction with the value of k that gives us the minimum error
-knn<- knn(X_train_subset, X_test_subset,cl = y_train_subset, k = k_min)
+knn <-
+  knn(X_train_subset, X_test_subset, cl = y_train_subset, k = k_min)
 
 knn_pred_min <- knn
 
 # Confusion matrix for KNN on the test set
-cm_knn <- confusionMatrix(data =knn_pred_min , reference = rain_subset_test$RainTomorrow, mode ='everything')
+cm_knn <-
+  confusionMatrix(data = knn_pred_min ,
+                  reference = rain_subset_test$RainTomorrow,
+                  mode = 'everything')
 
 cm_table_knn <- as.data.frame(cm_knn$table)
 
 f1_score_knn <- cm_knn$byClass["F1"]
-error_knn <- mean(knn_pred_min!=rain_subset_test$RainTomorrow)
-accuracy_knn<- mean(knn_pred_min==rain_subset_test$RainTomorrow)
+error_knn <- mean(knn_pred_min != rain_subset_test$RainTomorrow)
+accuracy_knn <- mean(knn_pred_min == rain_subset_test$RainTomorrow)
 
 ggplot(data = cm_table_knn, aes(x = Reference, y = Prediction, fill = Freq)) +
-    geom_tile(color = "white") +
-    geom_text(aes(label = Freq), color = "black", size = 8) +
-    scale_fill_gradient(low = "white", high = "steelblue") +
-    labs(title = paste("Confusion Matrix for KNN with F1-Score:", round(f1_score_knn, 3), "Error:", round(error_knn, 3) , "Accuracy:", round(accuracy_knn, 3)), x = "Target", y = "Prediction") +
-    theme_minimal() +
-    theme(axis.text = element_text(size = 8),
-          plot.title = element_text(size = 8, face = "bold"))
+  geom_tile(color = "white") +
+  geom_text(aes(label = Freq), color = "black", size = 8) +
+  scale_fill_gradient(low = "white", high = "steelblue") +
+  labs(
+    title = paste(
+      "Confusion Matrix for KNN with F1-Score:",
+      round(f1_score_knn, 3),
+      "Error:",
+      round(error_knn, 3) ,
+      "Accuracy:",
+      round(accuracy_knn, 3)
+    ),
+    x = "Target",
+    y = "Prediction"
+  ) +
+  theme_minimal() +
+  theme(axis.text = element_text(size = 8),
+        plot.title = element_text(size = 8, face = "bold"))
 
 
 ```
@@ -970,13 +1355,13 @@ ggplot(data.frame(knn_test_error),
                     "%)"))
 ```
 
+# ROC Curves
 
-## ROC Curves
+In this final section, we are going to compare all the models applied to balanced and subsetted data and generate a ROC curve to plot the False Positive rate (x-axis) against the True Positive rate (y-axis).
+This ultimately allows us to visualize the specificity, deduced from the false positives (1-false positive = specificity), and sensitivity from the true positives of each model and between models.
+We excluded KNN from this analysis, since we are unable to analyze thresholds for predicting classes since the model generates strict 0/1 classifications.
 
-In this final section, we are going to compare all the models applied to balanced and subsetted data and generate a ROC curve to plot the False Positive rate (x-axis) against the True Positive rate (y-axis). This ultimately allows us to visualize the specificity, deduced from the false positives (1-false positive = specificity), and sensitivity from the true positives of each model and between models. We excluded KNN from this analysis, since we are unable to analyze thresholds for predicting classes since the model generates strict 0/1 classifications.
-
-```{r ROC }
-
+```{r ROC, message=FALSE}
 # Best Models:
 
 set.seed(125)
@@ -987,100 +1372,127 @@ best_glm_model <- glm_model
 best_glm_predict <- glm_predict
 
 # LDA Model
-best_lda_model <- lda(data = rain_subset_train, RainTomorrow ~.,family = "binomial")
+best_lda_model <-
+  lda(data = rain_subset_train, RainTomorrow ~ ., family = "binomial")
 
-best_lda_predict <- predict(lda, rain_subset_test, type = "response")
-best_post_lda<- best_lda_predict$posterior
+best_lda_predict <-
+  predict(lda, rain_subset_test, type = "response")
+best_post_lda <- best_lda_predict$posterior
 
 # QDA Model
-best_qda_model <- qda(data = rain_subset_train,RainTomorrow ~.,family = "binomial")
+best_qda_model <-
+  qda(data = rain_subset_train, RainTomorrow ~ ., family = "binomial")
 
-best_qda_predict <- predict(qda, rain_subset_test, type = "response")
-best_post_qda<- best_qda_predict$posterior
+best_qda_predict <-
+  predict(qda, rain_subset_test, type = "response")
+best_post_qda <- best_qda_predict$posterior
 
 # LASSO Model
-best_lasso_model <- lasso_cv_subset 
+best_lasso_model <- lasso_cv_subset
 
 best_lasso_predict <- pred_lasso_subset
 
 # Ridge Model
-best_ridge_model <- ridge_cv_subset 
+best_ridge_model <- ridge_cv_subset
 
 best_ridge_predict <- pred_ridge_subset
 
-prediction <- tibble(truth = as.factor(rain_subset_test$RainTomorrow))
-prediction <- prediction %>% mutate(pred = as.numeric(best_glm_predict))%>%mutate(model= "GLM")%>%
-  add_row(truth = as.factor(rain_subset_test$RainTomorrow), pred = as.numeric(best_post_lda[,2]),model= "LDA")%>%
-  add_row(truth = as.factor(rain_subset_test$RainTomorrow), pred = as.numeric(best_post_qda[,2]),model= "QDA")%>%
-  add_row(truth = as.factor(rain_subset_test$RainTomorrow), pred = as.numeric(best_ridge_predict),model= "Ridge")%>%
-  add_row(truth = as.factor(rain_subset_test$RainTomorrow), pred = as.numeric(best_lasso_predict),model= "Lasso")
-
-roc <- prediction %>% group_by(model) %>%
-  roc(truth, pred, levels=c(0,1)) %/%
-  plot(roc)
-
-
-roc.out <- roc(prediction$truth, prediction$pred, levels=c(0,1))
-plot(roc.out,  print.auc=TRUE, legacy.axes=TRUE, xlab="False positive rate", ylab="True positive rate")
-
-
-roc <- prediction %>% group_by(model) %>%
-  roc(truth, pred, levels=c(0,1)) %/%
-  plot(roc)
-
-roc_data <- prediction %>% 
-  group_by(model) %>%
-  roc(truth, pred, levels=c(0,1)) %%
-  plot(roc.out,  print.auc=TRUE, legacy.axes=TRUE, xlab="False positive rate", ylab="True positive rate")
-
-roc_data <- prediction %>%
-  group_by(model) %>%
-  do(data.frame(roc(.$truth, .$pred, event.levels = "second"), model = unique(.$model)))
-
-roc <- prediction %>% group_by(model) %>%
-  roc(truth, pred) %>%
-plot(roc)
-
-roc_curve(two_class_example, truth, Class1) %>%
-  ggplot(aes(x = 1 - specificity, y = sensitivity)) +
-  geom_path() +
-  geom_abline(lty = 3) +
-  coord_equal() +
-  theme_bw()
-
-roc_score = roc(truth, pred)
-
-roc <- prediction %>% group_by(model) %>%roc_curve(truth, pred, event_level = "second") %>%autoplot()roc54
+prediction <-
+  tibble(truth = as.factor(rain_subset_test$RainTomorrow))
+prediction <-
+  prediction %>% mutate(pred = as.numeric(best_glm_predict)) %>% 
+  mutate(model = "GLM") %>%
+  add_row(
+    truth = as.factor(rain_subset_test$RainTomorrow),
+    pred = as.numeric(best_post_lda[, 2]),
+    model = "LDA"
+  ) %>%
+  add_row(
+    truth = as.factor(rain_subset_test$RainTomorrow),
+    pred = as.numeric(best_post_qda[, 2]),
+    model = "QDA"
+  ) %>%
+  add_row(
+    truth = as.factor(rain_subset_test$RainTomorrow),
+    pred = as.numeric(best_ridge_predict),
+    model = "Ridge"
+  ) %>%
+  add_row(
+    truth = as.factor(rain_subset_test$RainTomorrow),
+    pred = as.numeric(best_lasso_predict),
+    model = "Lasso"
+  )
 
 # Calculate ROC curves for each model
-roc_list <- lapply(split(prediction, prediction$model), function(df) {
-  roc.out <- roc(df$truth, df$pred, levels = c(0, 1))
-  roc.df <- data.frame(specificity = roc.out$specificities,
-                       sensitivity = roc.out$sensitivities)
-  return(roc.df)
-})
+roc_list <-
+  lapply(split(prediction, prediction$model), function(df) {
+    roc.out <- roc(df$truth, df$pred, levels = c(0, 1))
+    roc.df <- data.frame(specificity = roc.out$specificities,
+                         sensitivity = roc.out$sensitivities)
+    return(roc.df)
+  })
 
-model_colors <- rainbow(length(roc_list))
+model_colors <- c("red", "blue", "green", "orange", "black")
+#List of Model Names
 model_names <- names(roc_list)
-
-model_names
 
 ggplot() +
   lapply(seq_along(roc_list), function(i) {
-    geom_line(data = roc_list[[i]], 
-              aes(x = 1 - specificity, y = sensitivity),
-              color = model_colors[i], 
-              linetype = "solid", 
-              size = 1)
+    geom_line(
+      data = roc_list[[i]],
+      aes(
+        x = 1 - specificity,
+        y = sensitivity,
+        color = model_colors[i]
+      ),
+      linetype = "solid",
+      linewidth = 0.7
+    )
   }) +
   lapply(seq_along(roc_list), function(i) {
-      labs(title = "ROC Curves", x = "False Positive Rate", y = "True Positive Rate", names(roc_list[[i]]))   
+    labs(
+      title = "ROC Curves",
+      x = "False Positive Rate",
+      y = "True Positive Rate",
+      color = "Models"
+    )
   }) +
-  scale_color_manual(values = model_colors) +
-  theme_minimal() +
-  theme(legend.position = "right")
+  scale_color_manual(values = model_colors, labels = model_names) +
+  theme_minimal() 
+```
+
+# Discussion
+
+The area under each of the ROC curves for each model serves as an indicator for how well each model predicts RainTomorrow.The larger the area under the curve (AUC), the higher the recall of the model is (positivity rate).
+We can observe that the ridge, LDA, and QDA show a better AUC compared to GLM and LASSO models.
+In some cases concerning fatalities or hazardous situations, we care more about achieving a tradeoff between false positives and true positives in order to minimize false negatives.
+Thus, the ROC curves are suitable for modeling these cases.
+However, in our case, we care more generally about a model that predicts well than having this tradeoff between false positives and true positives.
+On the other hand, other projects using this data may give higher consideration to positive rain predictions, such as projects in the agriculture sector, where having rain tomorrow may impact the harvest season.
+To address our concern with prioritizing more precise predictions over the positivity rate, we extended our final analysis of the models by considering the key performance metrics, i.e.
+F1 Score, accuracy, error rate, for each model.
+
+```{r Final Model Comparisons}
+
+file_path3 <- "/Users/Sofia/Desktop/Rain_Australia/metrics_summary.csv"
+metrics_summary <- read.csv(file_path3)
+
+options(knitr.kable.NA = '')
+metrics_summary %>%
+  knitr::kable(
+    format = "latex",
+    align = "l",
+    booktabs = TRUE,
+    longtable = TRUE,
+    linesep = "",
+    caption = "Table of performance metrics by model."
+    ) %>% row_spec(0,bold=TRUE) %>% 
+  kableExtra::kable_styling(
+      position = "left",
+      latex_options = c("striped", "repeat_header"),
+      stripe_color = "gray!15"
+    )
 
 ```
 
-
-## Discussion 
+While in the ROC curves, Ridge, LDA and QDA performed better, the GLM models had the best performance metrics overall. These results suggest that compared to other models, the logistic regression model is the most precise in predicting RainTomorrow. 
